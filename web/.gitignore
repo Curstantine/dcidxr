@@ -4,6 +4,7 @@ dist
 .vercel
 .netlify
 .vinxi
+.nitro
 app.config.timestamp_*.js
 
 # Environment
@@ -22,6 +23,9 @@ app.config.timestamp_*.js
 
 # Temp
 gitignore
+
+# Drizzle Studio
+.drizzle/
 
 # System Files
 .DS_Store

@@ -1,6 +1,9 @@
 import OAuth from "start-oauth";
-import { createUser, findUser } from "~/auth/db";
-import { createSession } from "~/auth/server";
+
+import { createSession } from "~/api/auth.server";
+import { db } from "~/api/db";
+
+import { users } from "../../../../drizzle/schema";
 
 export const GET = OAuth({
 	password: process.env.SESSION_SECRET!,
@@ -9,8 +12,12 @@ export const GET = OAuth({
 		secret: process.env.DISCORD_SECRET!,
 	},
 	async handler({ email }, redirectTo) {
-		let user = await findUser({ email });
-		if (!user) user = await createUser({ email });
-		return createSession(user, redirectTo);
+		const result = await db.query.users.findFirst({ where: (x, { eq }) => eq(x.email, email) });
+		if (result) return createSession(result, redirectTo);
+
+		const res = await db.insert(users).values({ email }).returning({ id: users.id });
+		const { id } = res[0];
+
+		return createSession({ id, email }, redirectTo);
 	},
 });

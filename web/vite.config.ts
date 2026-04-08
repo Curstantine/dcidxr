@@ -11,4 +11,5 @@ export default defineConfig({
 		tailwindcss(),
 		nitro(),
 	],
+	ssr: { external: ["drizzle-orm"] },
 });

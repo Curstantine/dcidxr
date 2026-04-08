@@ -1,0 +1,10 @@
+{
+	"name": "crawler",
+	"scripts": {
+		"strip": "node ./src/index.js strip"
+	},
+	"packageManager": "pnpm@10.33.0",
+	"devDependencies": {
+		"@types/node": "^24.12.2"
+	}
+}

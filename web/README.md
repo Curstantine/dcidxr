@@ -1,6 +1,6 @@
 # SolidStart Template
 
-The **with-auth** example demonstrates native, context-based authentication featuring OAuth and email-password login.
+This project uses native, context-based authentication featuring OAuth and email-password login, with user data stored in PostgreSQL via Drizzle ORM.
 
 ## Installation
 
@@ -25,7 +25,15 @@ bun create solid@latest --s --t with-auth
 
 1. Rename `.env.example` to `.env`
 
-2. For Discord OAuth2 to work, update `.env` with your credentials:
+2. Configure PostgreSQL (Railway):
+
+    ```dotenv
+    DATABASE_URL=your-railway-postgres-url
+    ```
+
+    - In Railway, open your Postgres service, copy the connection string, and set it as `DATABASE_URL` in your app service variables.
+
+3. For Discord OAuth2 to work, update `.env` with your credentials:
 
     ```dotenv
     DISCORD_ID=your-discord-client-id
@@ -38,6 +46,21 @@ bun create solid@latest --s --t with-auth
         http://localhost:3000/api/oauth/discord
         ```
 
-3. To configure additional providers, refer to the [start-oauth](https://github.com/thomasbuilds/start-oauth#README) documentation
+4. Run migrations:
+
+    ```bash
+    pnpm db:generate
+    pnpm db:migrate
+    ```
+
+5. Railway deploy start command:
+
+    ```bash
+    pnpm start:railway
+    ```
+
+    This command applies pending migrations and then starts the app.
+
+6. To configure additional providers, refer to the [start-oauth](https://github.com/thomasbuilds/start-oauth#README) documentation
 
 ## This project was created with the [Solid CLI](https://github.com/solidjs-community/solid-cli)
