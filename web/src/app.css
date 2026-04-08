@@ -5,11 +5,11 @@
 }
 
 main {
-	@apply flex flex-col items-center justify-center min-h-screen bg-gray-50 gap-8 px-4;
+	@apply flex min-h-screen flex-col items-center justify-center gap-8 bg-gray-50 px-4;
 }
 
 h1 {
-	@apply uppercase text-6xl text-sky-700 font-thin;
+	@apply text-6xl font-thin text-sky-700 uppercase;
 }
 
 button {

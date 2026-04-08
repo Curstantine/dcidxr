@@ -3,7 +3,7 @@ import OAuth from "start-oauth";
 import { createSession } from "~/api/auth.server";
 import { db } from "~/api/db";
 
-import { users } from "../../../../drizzle/schema";
+import { user } from "../../../../drizzle/schema";
 
 export const GET = OAuth({
 	password: process.env.SESSION_SECRET!,
@@ -12,10 +12,10 @@ export const GET = OAuth({
 		secret: process.env.DISCORD_SECRET!,
 	},
 	async handler({ email }, redirectTo) {
-		const result = await db.query.users.findFirst({ where: (x, { eq }) => eq(x.email, email) });
+		const result = await db.query.user.findFirst({ where: { email: email } });
 		if (result) return createSession(result, redirectTo);
 
-		const res = await db.insert(users).values({ email }).returning({ id: users.id });
+		const res = await db.insert(user).values({ email }).returning({ id: user.id });
 		const { id } = res[0];
 
 		return createSession({ id, email }, redirectTo);

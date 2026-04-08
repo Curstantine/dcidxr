@@ -13,9 +13,9 @@ export default function Login() {
 				<a
 					href={login("discord")}
 					rel="external"
-					class="group w-full px-3 py-2 bg-white border border-gray-200 rounded-lg hover:bg-[#5865F2] hover:border-gray-300 focus:outline-none transition-colors duration-300 flex items-center justify-center gap-2.5 text-gray-700 hover:text-white"
+					class="group flex w-full items-center justify-center gap-2.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-gray-700 transition-colors duration-300 hover:border-gray-300 hover:bg-[#5865F2] hover:text-white focus:outline-none"
 				>
-					<Discord class="h-5 fill-[#5865F2] group-hover:fill-white duration-300" />
+					<Discord class="h-5 fill-[#5865F2] duration-300 group-hover:fill-white" />
 					Sign in with Discord
 				</a>
 			</div>

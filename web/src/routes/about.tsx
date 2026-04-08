@@ -7,7 +7,7 @@ export default function About() {
 			<Title>About Page</Title>
 			<h1 class="text-center">About Page</h1>
 			<Counter />
-			<p class="text-gray-700 text-center">
+			<p class="text-center text-gray-700">
 				Visit{" "}
 				<a
 					href="https://start.solidjs.com"

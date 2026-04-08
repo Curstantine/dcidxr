@@ -8,10 +8,10 @@ export default function Nav() {
 	const isAbout = useMatch(() => "/about");
 
 	return (
-		<nav class="fixed top-0 left-0 w-full bg-sky-800 shadow-sm z-50 flex items-center justify-between py-3 px-4 font-medium text-sm">
+		<nav class="fixed top-0 left-0 z-50 flex w-full items-center justify-between bg-sky-800 px-4 py-3 text-sm font-medium shadow-sm">
 			<a
 				href="/"
-				class={`px-3 py-2 text-sky-100 uppercase transition-colors duration-200 border-b-2 ${
+				class={`border-b-2 px-3 py-2 text-sky-100 uppercase transition-colors duration-200 ${
 					isHome() ? "border-sky-300 text-white" : "border-transparent hover:text-white"
 				}`}
 			>
@@ -19,7 +19,7 @@ export default function Nav() {
 			</a>
 			<a
 				href="/about"
-				class={`px-3 py-2 text-sky-100 uppercase transition-colors duration-200 border-b-2 ${
+				class={`border-b-2 px-3 py-2 text-sky-100 uppercase transition-colors duration-200 ${
 					isAbout() ? "border-sky-300 text-white" : "border-transparent hover:text-white"
 				}`}
 			>
@@ -30,7 +30,7 @@ export default function Nav() {
 				fallback={
 					<a
 						href="/login"
-						class="ml-auto px-4 py-2 text-sky-100 bg-sky-700 border border-sky-600 rounded-md hover:bg-sky-600 hover:text-white focus:outline-none transition-colors duration-200"
+						class="ml-auto rounded-md border border-sky-600 bg-sky-700 px-4 py-2 text-sky-100 transition-colors duration-200 hover:bg-sky-600 hover:text-white focus:outline-none"
 					>
 						Login
 					</a>
@@ -39,7 +39,7 @@ export default function Nav() {
 				<form action={logout} method="post" class="ml-auto">
 					<button
 						type="submit"
-						class="px-4 py-2 text-sky-100 bg-sky-700 border border-sky-600 rounded-md hover:bg-sky-600 hover:text-white focus:outline-none transition-colors duration-200"
+						class="rounded-md border border-sky-600 bg-sky-700 px-4 py-2 text-sky-100 transition-colors duration-200 hover:bg-sky-600 hover:text-white focus:outline-none"
 					>
 						Sign Out
 					</button>
