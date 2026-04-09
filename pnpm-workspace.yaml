@@ -1,5 +1,5 @@
 packages:
-    - web
+  - web
 allowBuilds:
-    "@parcel/watcher": true
-    esbuild: true
+  '0': esbuild
+  '1': lightningcss

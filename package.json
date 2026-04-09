@@ -1,15 +1,15 @@
 {
-	"name": "dcidxr",
-	"license": "MIT",
-	"author": "Curstantine",
-	"scripts": {
-		"fmt": "oxfmt .",
-		"lint": "oxlint ."
-	},
-	"devDependencies": {
-		"@types/node": "^24.12.2",
-		"oxfmt": "^0.44.0",
-		"oxlint": "^1.59.0"
-	},
-	"packageManager": "pnpm@10.33.0"
+    "name": "dcidxr",
+    "license": "MIT",
+    "author": "Curstantine",
+    "scripts": {
+        "format": "pnpm run -r format",
+        "lint": "pnpm run -r lint",
+        "check": "pnpm run -r check"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.4.5",
+        "@types/node": "^24.12.2"
+    },
+    "packageManager": "pnpm@10.33.0"
 }

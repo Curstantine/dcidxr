@@ -1,15 +1,22 @@
-import { defineConfig } from "vite";
-import { nitroV2Plugin as nitro } from "@solidjs/vite-plugin-nitro-2";
-import { solidStart } from "@solidjs/start/config";
 import tailwindcss from "@tailwindcss/vite";
+import { devtools } from "@tanstack/devtools-vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+import tsconfigPaths from "vite-tsconfig-paths";
 
-export default defineConfig({
+const config = defineConfig({
 	plugins: [
-		solidStart({
-			ssr: true,
-		}),
+		devtools(),
+		tsconfigPaths({ projects: ["./tsconfig.json"] }),
 		tailwindcss(),
-		nitro(),
+		tanstackStart(),
+		viteReact({
+			babel: {
+				plugins: ["babel-plugin-react-compiler"],
+			},
+		}),
 	],
-	ssr: { external: ["drizzle-orm"] },
 });
+
+export default config;
