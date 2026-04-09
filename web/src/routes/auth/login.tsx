@@ -2,18 +2,16 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { getSession } from "@/auth/func";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/auth/login")({
 	beforeLoad: async () => {
 		const session = await getSession();
-		if (!session) {
-			throw redirect({ to: "/auth/login" });
-		}
+		if (session) throw redirect({ to: "/" });
 
-		return { user: session.user };
+		return null;
 	},
 	component: RouteComponent,
 });
 
 function RouteComponent() {
-	return <main></main>;
+	return <div>Hello "/auth/login"!</div>;
 }
