@@ -1,9 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 
-import { relations } from "./schema.ts";
+import { relations } from "@/db/relations";
+import { env } from "@/env";
 
-if (!process.env.DATABASE_URL) {
-	throw new Error("[db]: DATABASE_URL is not set");
-}
-
-export const db = drizzle(process.env.DATABASE_URL, { relations });
+export const db = drizzle(env.DATABASE_URL, { relations });

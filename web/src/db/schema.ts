@@ -1,15 +1,5 @@
-import { defineRelations, sql } from "drizzle-orm";
-import { index, integer, pgEnum, pgTable, serial, text, uniqueIndex } from "drizzle-orm/pg-core";
-
-export const user = pgTable(
-	"user",
-	{
-		id: serial("id").primaryKey(),
-		email: text("email").notNull(),
-		password: text("password"),
-	},
-	(table) => [uniqueIndex("users_email_unique").on(table.email)],
-);
+import { sql } from "drizzle-orm";
+import { index, integer, pgEnum, pgTable, serial, text } from "drizzle-orm/pg-core";
 
 export const circleStatusEnum = pgEnum("circle_status", ["incomplete", "complete"]);
 
@@ -43,18 +33,4 @@ export const release = pgTable(
 	],
 );
 
-export const relations = defineRelations(schema, (r) => ({
-	release: {
-		circle: r.one.circle({
-			from: r.release.circleId,
-			to: r.circle.id,
-			optional: false,
-		}),
-	},
-	circle: {
-		releases: r.many.release({
-			from: r.circle.id,
-			to: r.release.circleId,
-		}),
-	},
-}));
+export * from "@/db/schema.auth";
