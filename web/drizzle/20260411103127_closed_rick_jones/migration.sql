@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "has_access" boolean DEFAULT false NOT NULL;

@@ -5,9 +5,7 @@ import { getSession } from "@/auth/func";
 export const Route = createFileRoute("/")({
 	beforeLoad: async () => {
 		const session = await getSession();
-		if (!session) {
-			throw redirect({ to: "/auth/login" });
-		}
+		if (!session) throw redirect({ to: "/auth/login" });
 
 		return { user: session.user };
 	},
@@ -15,5 +13,6 @@ export const Route = createFileRoute("/")({
 });
 
 function RouteComponent() {
-	return <main></main>;
+	const data = Route.useRouteContext();
+	return <main>hi, {data.user.name}</main>;
 }
