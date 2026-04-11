@@ -13,11 +13,10 @@ export const Route = createFileRoute("/")({
 });
 
 function RouteComponent() {
-	const data = Route.useRouteContext();
 	return (
 		<main className="max-w-4xl mx-auto">
 			<nav className="text-center py-2 text-sm">
-				Doujin Cafe <code className="bg-accent p-0.5 rounded">#collection</code> index
+				Doujin Cafe - <code className="bg-accent p-0.5 rounded">#collection</code> Index
 			</nav>
 		</main>
 	);

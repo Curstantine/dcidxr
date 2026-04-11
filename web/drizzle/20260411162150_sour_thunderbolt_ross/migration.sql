@@ -1,0 +1,1 @@
+ALTER TYPE "server_meta_key" ADD VALUE 'last_indexed';

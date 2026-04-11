@@ -3,6 +3,7 @@ import z from "zod";
 
 import { authClient } from "@/auth/client";
 import { getSession } from "@/auth/func";
+import { Button } from "@/components/button";
 
 export const Route = createFileRoute("/auth/login")({
 	validateSearch: z.object({ hasAccess: z.boolean().optional() }),
@@ -25,25 +26,21 @@ function RouteComponent() {
 	};
 
 	return (
-		<main className="max-w-lg mx-auto flex flex-col items-center justify-center h-screen pb-12 gap-4">
+		<main className="max-w-lg mx-auto flex flex-col items-center justify-center h-screen pb-12">
 			{hasAccess !== undefined && !hasAccess && (
 				<div className="border p-2 text-center border-current text-red-500 dark:text-red-400">
 					<p>You do not have access to the certain server and channel!!</p>
 				</div>
 			)}
-			<h1 className="text-2xl text-white">Login</h1>
-			<span className="text-center">
+			<h1 className="text-2xl font-medium">Login</h1>
+			<span className="text-center mb-6 mt-1">
 				To use this service, you must sign in with Discord, and must have access to a
 				certain server and a channel...
 			</span>
-			<button
-				type="button"
-				onClick={handleDiscordLogin}
-				className="button w-full justify-center text-white bg-discord hover:bg-discord-hover focus:ring-discord"
-			>
-				<span className="iconify bxl--discord size-6" />
+			<Button type="button" size="lg" variant="discord" onClick={handleDiscordLogin}>
+				<span aria-hidden className="iconify bxl--discord-alt size-6" />
 				Sign in with Discord
-			</button>
+			</Button>
 		</main>
 	);
 }

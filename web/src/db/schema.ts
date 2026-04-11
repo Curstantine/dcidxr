@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { index, integer, pgEnum, pgTable, serial, text } from "drizzle-orm/pg-core";
 
 export const circleStatusEnum = pgEnum("circle_status", ["incomplete", "complete"]);
-export const serverMetaKeyEnum = pgEnum("server_meta_key", ["last_crawled"]);
+export const serverMetaKeyEnum = pgEnum("server_meta_key", ["last_crawled", "last_indexed"]);
 
 export const circle = pgTable(
 	"circle",
