@@ -2,9 +2,13 @@
 	"name": "crawler",
 	"type": "module",
 	"scripts": {
-		"strip": "node --experimental-strip-types ./src/index.ts strip"
+		"strip": "node --experimental-strip-types ./src/index.ts strip",
+		"format": "biome format",
+		"lint": "biome lint",
+		"check": "biome check"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "2.4.11",
 		"@types/node": "24"
 	},
 	"packageManager": "pnpm@10.33.0"

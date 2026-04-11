@@ -17,6 +17,9 @@ importers:
 
   crawler:
     devDependencies:
+      '@biomejs/biome':
+        specifier: 2.4.11
+        version: 2.4.11
       '@types/node':
         specifier: '24'
         version: 24.12.2
