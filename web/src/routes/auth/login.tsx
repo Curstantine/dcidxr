@@ -1,8 +1,8 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import z from "zod";
 
 import { authClient } from "@/auth/client";
 import { getSession } from "@/auth/func";
-import z from "zod";
 
 export const Route = createFileRoute("/auth/login")({
 	validateSearch: z.object({ hasAccess: z.boolean().optional() }),
@@ -26,7 +26,7 @@ function RouteComponent() {
 
 	return (
 		<main className="max-w-lg mx-auto flex flex-col items-center justify-center h-screen pb-12 gap-4">
-			{!hasAccess && (
+			{hasAccess !== undefined && !hasAccess && (
 				<div className="border p-2 text-center border-current text-red-500 dark:text-red-400">
 					<p>You do not have access to the certain server and channel!!</p>
 				</div>

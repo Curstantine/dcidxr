@@ -21,15 +21,6 @@ export const auth = betterAuth({
 			scope: ["identify", "email", "guilds.members.read"],
 		},
 	},
-	user: {
-		additionalFields: {
-			hasAccess: {
-				type: "boolean",
-				defaultValue: false,
-				input: false,
-			},
-		},
-	},
 	hooks: {
 		after: createAuthMiddleware(async (ctx) => {
 			if (!(ctx.path === "/callback/:id" && ctx.params.id === "discord")) return;

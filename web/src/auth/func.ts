@@ -41,7 +41,6 @@ export const checkDiscordAccess = createServerOnlyFn(async (token: string) => {
 	}
 
 	const member: DiscordGuildMember = await res.json();
-	console.log(member);
 
 	if (!member.roles.some((role: string) => env.DISCORD_ROLE_IDS.includes(role))) {
 		throw new APIError("FORBIDDEN", { message: "You don't have the required role." });
