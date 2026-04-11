@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { index, integer, pgEnum, pgTable, serial, text } from "drizzle-orm/pg-core";
 
 export const circleStatusEnum = pgEnum("circle_status", ["incomplete", "complete"]);
+export const serverMetaKeyEnum = pgEnum("server_meta_key", ["last_crawled"]);
 
 export const circle = pgTable(
 	"circle",
@@ -32,5 +33,10 @@ export const release = pgTable(
 		index("releases_circle_id_idx").on(table.circleId),
 	],
 );
+
+export const serverMeta = pgTable("server_meta", {
+	key: serverMetaKeyEnum("key").primaryKey(),
+	value: text("value").notNull(),
+});
 
 export * from "./schema.auth.ts";
