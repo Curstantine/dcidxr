@@ -3,27 +3,20 @@ import { defineRelations } from "drizzle-orm";
 import * as schema from "@/db/schema";
 
 export const relations = defineRelations(schema, (r) => ({
-	release: {
-		circle: r.one.circle({
-			from: r.release.circleId,
-			to: r.circle.id,
-			optional: false,
-		}),
+	account: {
+		user: r.one.user({ from: r.account.userId, to: r.user.id }),
 	},
-	circle: {
-		releases: r.many.release({
-			from: r.circle.id,
-			to: r.release.circleId,
-		}),
+	session: {
+		user: r.one.user({ from: r.session.userId, to: r.user.id }),
 	},
 	user: {
-		sessions: r.many.session({
-			from: r.user.id,
-			to: r.session.userId,
-		}),
-		accounts: r.many.account({
-			from: r.user.id,
-			to: r.account.userId,
-		}),
+		accounts: r.many.account(),
+		sessions: r.many.session(),
+	},
+	release: {
+		circle: r.one.circle({ from: r.release.circleId, to: r.circle.id }),
+	},
+	circle: {
+		releases: r.many.release(),
 	},
 }));

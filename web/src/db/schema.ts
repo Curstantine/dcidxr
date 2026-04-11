@@ -33,4 +33,4 @@ export const release = pgTable(
 	],
 );
 
-export * from "@/db/schema.auth";
+export * from "./schema.auth.ts";
