@@ -74,6 +74,7 @@ function getOrCreateGroup(groups: Map<string, MutableGroup>, circle: string): Mu
 		});
 	}
 
+	// biome-ignore lint/style/noNonNullAssertion: group is guaranteed to exist
 	return groups.get(circle)!;
 }
 

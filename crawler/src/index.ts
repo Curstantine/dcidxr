@@ -1,11 +1,15 @@
-import { transform } from "./transform";
+import { fetchReleases } from "./fetch.ts";
+import { transform } from "./transform.ts";
 
-function main(): void {
+async function main(): Promise<void> {
 	const [command, inputArg, outputArg] = process.argv.slice(2);
 
 	switch (command) {
 		case "transform":
 			transform(inputArg, outputArg);
+			break;
+		case "fetch":
+			await fetchReleases(inputArg, outputArg);
 			break;
 		default:
 			printUsage();
@@ -15,11 +19,11 @@ function main(): void {
 }
 
 function printUsage(): void {
-	console.error("Usage: node src/index.ts transform [inputPath] [outputPath]");
+	console.error("Usage: node src/index.ts <transform|fetch> [inputPath] [outputPath]");
 }
 
 try {
-	main();
+	await main();
 } catch (error: unknown) {
 	const message = error instanceof Error ? error.message : String(error);
 	console.error(`Error: ${message}`);
