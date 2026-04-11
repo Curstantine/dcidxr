@@ -1,5 +1,6 @@
 packages:
-  - web
+    - web
+    - crawler
 allowBuilds:
-  '0': esbuild
-  '1': lightningcss
+    esbuild: true
+    lightningcss: true
