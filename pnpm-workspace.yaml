@@ -1,6 +1,8 @@
 packages:
-    - web
-    - crawler
+  - web
+  - crawler
+  - megajs
 allowBuilds:
-    esbuild: true
-    lightningcss: true
+  core-js: true
+  esbuild: true
+  lightningcss: true
