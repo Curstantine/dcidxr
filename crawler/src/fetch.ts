@@ -121,7 +121,6 @@ async function loadMegaFolder(link: string): Promise<MegaFile> {
 
 async function fetchReleasesFromLink(link: string): Promise<Release[]> {
 	const root = await loadMegaFolder(link);
-	console.log("hi");
 	const name = normalizeNodeName(root.name, "Root");
 
 	if (!root.directory) {

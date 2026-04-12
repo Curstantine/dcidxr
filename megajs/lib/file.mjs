@@ -114,12 +114,19 @@ class File extends EventEmitter {
 			if (this.directory) {
 				const filesMap = Object.create(null);
 				const nodes = response.f;
-				const folder = nodes.find(
-					(node) =>
-						node.k &&
-						// the root folder is the one which "n" equals the first part of "k"
-						node.h === node.k.split(":")[0],
-				);
+				const handles = new Set(nodes.map((node) => node.h));
+				// Shared folder responses used to reliably identify the root node through the
+				// first segment of `k`. Some newer responses no longer follow that pattern, so
+				// we first try the old heuristic and then fall back to the only node whose
+				// parent handle is not part of the returned node set, which is the tree root.
+				const folder =
+					nodes.find((x) => x.k && x.h === x.k.split(":")[0]) ??
+					nodes.find((x) => !handles.has(x.p));
+
+				if (!folder) {
+					return cb(Error("Shared folder root node could not be determined."));
+				}
+
 				const aes = this.key ? new AES(this.key) : null;
 				this.nodeId = folder.h;
 				this.timestamp = folder.ts;
