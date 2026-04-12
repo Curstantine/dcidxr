@@ -1,4 +1,5 @@
 import { fetchReleases } from "./fetch.ts";
+import { sync } from "./sync.ts";
 import { transform } from "./transform.ts";
 
 async function main(): Promise<void> {
@@ -12,6 +13,9 @@ async function main(): Promise<void> {
 			break;
 		case "fetch":
 			await fetchReleases(inputArg, outputArg);
+			break;
+		case "sync":
+			await sync(inputArg);
 			break;
 		case "help":
 		case "--help":
@@ -29,10 +33,12 @@ function printUsage(): void {
 	console.error("Usage:");
 	console.error("  node src/index.ts transform [inputPath] [outputPath]");
 	console.error("  node src/index.ts fetch [inputPath] [outputPath]");
+	console.error("  node src/index.ts sync [inputPath]");
 	console.error("");
 	console.error("Defaults:");
 	console.error("  transform: input=dist/input.json output=dist/transformed.json");
 	console.error("  fetch:     input=dist/transformed.json output=dist/releases.json");
+	console.error("  sync:      input=dist/releases.json");
 }
 
 try {

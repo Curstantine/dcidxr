@@ -17,9 +17,18 @@ importers:
 
   crawler:
     dependencies:
+      dotenv:
+        specifier: ^17.4.1
+        version: 17.4.1
+      drizzle-orm:
+        specifier: 1.0.0-beta.21
+        version: 1.0.0-beta.21(@opentelemetry/api@1.9.1)(@types/mssql@9.1.11(@azure/core-client@1.10.1))(@types/pg@8.20.0)(mssql@11.0.1(@azure/core-client@1.10.1))(pg@8.20.0)(postgres@3.4.9)(zod@4.3.6)
       megajs:
         specifier: 'workspace:'
         version: link:../megajs
+      pg:
+        specifier: ^8.20.0
+        version: 8.20.0
     devDependencies:
       '@biomejs/biome':
         specifier: 2.4.11
@@ -176,6 +185,9 @@ importers:
       '@iconify-json/bxl':
         specifier: ^1.2.4
         version: 1.2.4
+      '@iconify-json/material-symbols':
+        specifier: ^1.2.66
+        version: 1.2.66
       '@iconify/tailwind4':
         specifier: ^1.2.3
         version: 1.2.3(tailwindcss@4.2.2)
@@ -1056,6 +1068,9 @@ packages:
 
   '@iconify-json/bxl@1.2.4':
     resolution: {integrity: sha512-R6gVQSxB1+XeVClK7KdACnk1SfP8xiAu6LHuKZmp6Ro5zwMQbpe9vFBv30F6eHMDL8lZ7eXuac5SRJ9C8DKehQ==}
+
+  '@iconify-json/material-symbols@1.2.66':
+    resolution: {integrity: sha512-pgZmK8RBAaYjfHnR0DcUDraduiJwjGDi4FwCXp89ecyNfs6fcL8j+TJ+Xqkyv6v7c31j/4OlL5ly86ATT6yTpA==}
 
   '@iconify/tailwind4@1.2.3':
     resolution: {integrity: sha512-z8SKiMHRASJKF/IY//87MF88lcB7ulxh8vlhQXXLWsBkNtOh6ese9R41MyGpQeqXdRvQVt+/fX2glQtHFjQ+MA==}
@@ -6339,6 +6354,10 @@ snapshots:
   '@humanwhocodes/object-schema@2.0.3': {}
 
   '@iconify-json/bxl@1.2.4':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/material-symbols@1.2.66':
     dependencies:
       '@iconify/types': 2.0.0
 

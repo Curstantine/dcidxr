@@ -5,7 +5,7 @@ import z from "zod";
 import { db } from "@/db";
 
 export const fetchCirclesInput = z.object({
-	limit: z.number().optional().default(100),
+	limit: z.number().optional().default(1000),
 	search: z.string().optional(),
 	cursor: z.number().optional(),
 });

@@ -4,6 +4,7 @@
 	"scripts": {
 		"transform": "node --experimental-strip-types ./src/index.ts transform",
 		"fetch": "node --experimental-strip-types ./src/index.ts fetch",
+		"sync": "node --experimental-strip-types ./src/index.ts sync",
 		"format": "biome format",
 		"lint": "biome lint",
 		"check": "biome check"
@@ -14,6 +15,9 @@
 	},
 	"packageManager": "pnpm@10.33.0",
 	"dependencies": {
-		"megajs": "workspace:"
+		"dotenv": "^17.4.1",
+		"drizzle-orm": "1.0.0-beta.21",
+		"megajs": "workspace:",
+		"pg": "^8.20.0"
 	}
 }
