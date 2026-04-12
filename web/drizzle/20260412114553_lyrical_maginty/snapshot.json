@@ -1,9 +1,9 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "265cfc83-a429-42f0-b844-76f8b0df88c1",
+  "id": "b64935b1-b967-47d4-8302-754cb44ccb76",
   "prevIds": [
-    "1d864da6-d777-4341-bcbf-18e33164abcd"
+    "00000000-0000-0000-0000-000000000000"
   ],
   "ddl": [
     {
@@ -39,6 +39,12 @@
     {
       "isRlsEnabled": false,
       "name": "server_meta",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "track",
       "entityType": "tables",
       "schema": "public"
     },
@@ -123,7 +129,7 @@
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
-      "default": "''",
+      "default": "'Missing releases'",
       "generated": null,
       "identity": null,
       "name": "status_text",
@@ -134,12 +140,12 @@
     {
       "type": "text",
       "typeSchema": null,
-      "notNull": true,
-      "dimensions": 1,
-      "default": "ARRAY[]",
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
       "generated": null,
       "identity": null,
-      "name": "missing_links",
+      "name": "missing_link",
       "entityType": "columns",
       "schema": "public",
       "table": "circle"
@@ -234,6 +240,58 @@
       "entityType": "columns",
       "schema": "public",
       "table": "server_meta"
+    },
+    {
+      "type": "serial",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "track"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "track"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "circle_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "track"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "release_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "track"
     },
     {
       "type": "text",
@@ -744,6 +802,48 @@
       "nameExplicit": true,
       "columns": [
         {
+          "value": "circle_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "tracks_circle_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "track"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "release_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "tracks_release_id_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "track"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
           "value": "user_id",
           "isExpression": false,
           "asc": true,
@@ -823,6 +923,40 @@
     {
       "nameExplicit": false,
       "columns": [
+        "circle_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "circle",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "track_circle_id_circle_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "track"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "release_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "release",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "track_release_id_release_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "track"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
         "user_id"
       ],
       "schemaTo": "public",
@@ -882,6 +1016,16 @@
       "name": "server_meta_pkey",
       "schema": "public",
       "table": "server_meta",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "track_pkey",
+      "schema": "public",
+      "table": "track",
       "entityType": "pks"
     },
     {

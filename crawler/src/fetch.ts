@@ -1,4 +1,4 @@
-import fs from "node:fs";
+import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import { File as MegaFile } from "megajs";
@@ -23,7 +23,7 @@ type ReleaseFile = {
 
 type Release = {
 	name: string;
-	downloadId: string;
+	link: string;
 	directory: boolean;
 	sizeBytes: number;
 	files: ReleaseFile[];
@@ -63,6 +63,26 @@ const AUDIO_FILE_EXTENSIONS = new Set([
 
 const DEFAULT_CONCURRENCY = 4;
 
+type LinkTask = {
+	groupIndex: number;
+	circle: string;
+	link: string;
+};
+
+type GroupAccumulator = {
+	releaseSets: Release[][];
+	errors: string[];
+};
+
+function parseJson<T>(raw: string, filePath: string): T {
+	try {
+		return JSON.parse(raw) as T;
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		throw new Error(`Invalid JSON in ${filePath}: ${message}`);
+	}
+}
+
 function normalizeNodeName(name: string | null | undefined, fallback = "Unknown"): string {
 	const normalized = typeof name === "string" ? name.trim() : "";
 	return normalized.length > 0 ? normalized : fallback;
@@ -79,9 +99,8 @@ function getDownloadId(node: MegaFile): string {
 		: node.downloadId;
 }
 
-function collectLeafFiles(node: MegaNode, currentPath = ""): ReleaseFile[] {
+function collectLeafFiles(node: MegaNode): ReleaseFile[] {
 	const name = normalizeNodeName(node.name);
-	const path = currentPath ? `${currentPath}/${name}` : name;
 
 	if (!node.directory && isAudioFileName(name)) {
 		const sizeBytes = typeof node.size === "number" ? node.size : 0;
@@ -89,7 +108,7 @@ function collectLeafFiles(node: MegaNode, currentPath = ""): ReleaseFile[] {
 	}
 
 	if (node.children === undefined) return [];
-	return node.children.flatMap((x) => collectLeafFiles(x, path));
+	return node.children.flatMap((x) => collectLeafFiles(x));
 }
 
 function sumFileSizes(files: ReleaseFile[]): number {
@@ -103,11 +122,11 @@ async function buildRelease(node: MegaFile): Promise<Release> {
 		: [{ name, sizeBytes: typeof node.size === "number" ? node.size : 0 }];
 
 	const sizeBytes = sumFileSizes(files);
-	const downloadId = getDownloadId(node);
+	const link = await node.link(false);
 
 	return {
 		name,
-		downloadId,
+		link,
 		directory: node.directory,
 		sizeBytes,
 		files,
@@ -128,12 +147,10 @@ async function fetchReleasesFromLink(link: string): Promise<Release[]> {
 	}
 
 	if (root.children === undefined || root.children.length === 0) {
-		return [
-			{ name, downloadId: getDownloadId(root), directory: true, sizeBytes: 0, files: [] },
-		];
+		return [{ name, link: await root.link(false), directory: true, sizeBytes: 0, files: [] }];
 	}
 
-	return Promise.all(root.children.map((x) => buildRelease(x)));
+	return Promise.all(root.children.map(buildRelease));
 }
 
 async function mapWithConcurrency<TInput, TOutput>(
@@ -141,7 +158,12 @@ async function mapWithConcurrency<TInput, TOutput>(
 	concurrency: number,
 	mapper: (value: TInput, index: number) => Promise<TOutput>,
 ): Promise<TOutput[]> {
-	const results = Array.from<TOutput | undefined>({ length: values.length });
+	if (values.length === 0) return [];
+
+	const results: TOutput[] = Array.from(
+		{ length: values.length },
+		() => null as unknown as TOutput,
+	);
 	let nextIndex = 0;
 
 	const worker = async (): Promise<void> => {
@@ -154,7 +176,7 @@ async function mapWithConcurrency<TInput, TOutput>(
 
 	const workerCount = Math.max(1, Math.min(concurrency, values.length));
 	await Promise.all(Array.from({ length: workerCount }, () => worker()));
-	return results as TOutput[];
+	return results;
 }
 
 function dedupeReleases(releases: Release[]): Release[] {
@@ -162,10 +184,8 @@ function dedupeReleases(releases: Release[]): Release[] {
 	const deduped: Release[] = [];
 
 	for (const release of releases) {
-		const key = `${release.name}::${release.downloadId}::${release.sizeBytes}`;
-		if (seen.has(key)) {
-			continue;
-		}
+		const key = `${release.name}::${release.link}::${release.sizeBytes}`;
+		if (seen.has(key)) continue;
 
 		seen.add(key);
 		deduped.push(release);
@@ -175,15 +195,17 @@ function dedupeReleases(releases: Release[]): Release[] {
 }
 
 export async function fetchReleases(inputArg?: string, outputArg?: string): Promise<void> {
-	const inputPath = path.resolve(process.cwd(), inputArg ?? "output.messages.json");
-	const outputPath = path.resolve(process.cwd(), outputArg ?? "output.releases.json");
+	const inputPath = path.resolve(process.cwd(), inputArg ?? "dist/transformed.json");
+	const outputPath = path.resolve(process.cwd(), outputArg ?? "dist/releases.json");
 
-	if (!fs.existsSync(inputPath)) {
+	try {
+		await fs.access(inputPath);
+	} catch {
 		throw new Error(`Input file not found: ${inputPath}`);
 	}
 
-	const inputRaw = fs.readFileSync(inputPath, "utf8");
-	const inputJson = JSON.parse(inputRaw) as InputPayload;
+	const inputRaw = await fs.readFile(inputPath, "utf8");
+	const inputJson = parseJson<InputPayload>(inputRaw, inputPath);
 
 	if (!Array.isArray(inputJson.groups)) {
 		throw new Error("Invalid input JSON: expected top-level 'groups' array.");
@@ -192,39 +214,58 @@ export async function fetchReleases(inputArg?: string, outputArg?: string): Prom
 	const groups = inputJson.groups;
 	let processedLinkCount = 0;
 	const totalLinks = groups.reduce((sum, group) => sum + group.links.length, 0);
+	const linkTasks: LinkTask[] = groups.flatMap((group, groupIndex) =>
+		group.links.map((link) => ({ groupIndex, circle: group.circle, link })),
+	);
 
-	const outputGroups = await mapWithConcurrency(groups, DEFAULT_CONCURRENCY, async (group) => {
-		const errors: string[] = [];
-		const releaseSets = await Promise.all(
-			group.links.map(async (link) => {
-				processedLinkCount += 1;
-				console.log(
-					`[${processedLinkCount}/${totalLinks}] Fetching ${group.circle}: ${link}`,
-				);
+	const taskResults = await mapWithConcurrency(linkTasks, DEFAULT_CONCURRENCY, async (task) => {
+		processedLinkCount += 1;
+		console.log(`[${processedLinkCount}/${totalLinks}] Fetching ${task.circle}: ${task.link}`);
 
-				try {
-					return await fetchReleasesFromLink(link);
-				} catch (error: unknown) {
-					const message = error instanceof Error ? error.message : String(error);
-					errors.push(`${link}: ${message}`);
-					return [];
-				}
-			}),
-		);
+		try {
+			return {
+				groupIndex: task.groupIndex,
+				releases: await fetchReleasesFromLink(task.link),
+				error: null,
+			};
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			return {
+				groupIndex: task.groupIndex,
+				releases: [],
+				error: `${task.link}: ${message}`,
+			};
+		}
+	});
 
-		const releases = dedupeReleases(releaseSets.flat()).sort((a, b) =>
+	const groupAccumulators: GroupAccumulator[] = groups.map(() => ({
+		releaseSets: [],
+		errors: [],
+	}));
+
+	for (const result of taskResults) {
+		const accumulator = groupAccumulators[result.groupIndex];
+		accumulator.releaseSets.push(result.releases);
+		if (result.error) {
+			accumulator.errors.push(result.error);
+		}
+	}
+
+	const outputGroups = groups.map((group, groupIndex) => {
+		const accumulator = groupAccumulators[groupIndex];
+		const releases = dedupeReleases(accumulator.releaseSets.flat()).sort((a, b) =>
 			a.name.localeCompare(b.name),
 		);
 
 		return {
 			...group,
 			releases,
-			errors,
+			errors: accumulator.errors,
 		};
 	});
 
 	const outputJson: OutputPayload = { groups: outputGroups };
-	fs.writeFileSync(outputPath, `${JSON.stringify(outputJson, null, 2)}\n`);
+	await fs.writeFile(outputPath, `${JSON.stringify(outputJson, null, 2)}\n`);
 
 	const totalReleases = outputGroups.reduce((sum, group) => sum + group.releases.length, 0);
 	console.log(

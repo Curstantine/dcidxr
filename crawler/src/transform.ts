@@ -1,11 +1,13 @@
-import fs from "node:fs";
+import { promises as fs } from "node:fs";
 import path from "node:path";
 
 const MEGA_LINK_REGEX = /https?:\/\/(?:www\.)?mega\.(?:nz|co\.nz)\/[^\s)>]+/gi;
 const URL_REGEX = /https?:\/\/[^\s)>]+/gi;
 const CIRCLE_REGEX = /^\s*\*\*(.+?)\*\*(?:\s+.*)?$/;
-const STATUS_LINE_REGEX = /^\s*Status(?:\s*\([^)]*\))?\s*:\s*(.+)$/i;
+const STATUS_LINE_REGEX = /^\s*Stat(?:us|s)(?:\s*\([^)]*\))?\s*:\s*(.+)$/i;
 const MISSING_LINE_REGEX = /^\s*Missing(?:\s*\([^)]*\))?\s*:/i;
+const STATUS_UPDATE_REGEX = /-\s*(?:Last\s+)?Updat\w*\s*:?\s*(.+)$/i;
+const TRAILING_DATE_REGEX = /-\s*(\d{1,2}\/\d{1,2}\/\d{2,4})\s*$/;
 
 type Message = {
 	content?: unknown;
@@ -18,7 +20,7 @@ type InputPayload = {
 type Group = {
 	circle: string;
 	links: string[];
-	missingLinks: string[];
+	missingLink: string | null;
 	status: string | null;
 	statusMeta: string | null;
 	lastUpdated: string | null;
@@ -26,14 +28,54 @@ type Group = {
 
 type MutableGroup = {
 	links: Set<string>;
-	missingLinks: Set<string>;
+	missingLink: string | null;
 	status: string | null;
 	statusMeta: string | null;
 	lastUpdated: string | null;
 };
 
+function parseJson<T>(raw: string, filePath: string): T {
+	try {
+		return JSON.parse(raw) as T;
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		throw new Error(`Invalid JSON in ${filePath}: ${message}`);
+	}
+}
+
 function normalizeCircleName(rawName: string): string {
 	return rawName.trim();
+}
+
+function normalizeStatus(rawStatus: string): string | null {
+	const normalized = rawStatus
+		.replace(/^[:\-\s]+/, "")
+		.replace(/\s+/g, " ")
+		.trim();
+	if (normalized.length === 0) {
+		return null;
+	}
+
+	const compact = normalized.toLowerCase().replace(/[^a-z]/g, "");
+
+	if (compact.startsWith("incomplete") || compact.startsWith("incompleted")) {
+		return "Incomplete";
+	}
+
+	if (compact.startsWith("missing")) {
+		return "Missing";
+	}
+
+	if (
+		compact.startsWith("completed") ||
+		compact.startsWith("complete") ||
+		compact.endsWith("completed") ||
+		compact.startsWith("compelted")
+	) {
+		return "Completed";
+	}
+
+	return normalized;
 }
 
 function parseStatusLine(line: string): {
@@ -47,7 +89,7 @@ function parseStatusLine(line: string): {
 	}
 
 	const value = match[1].trim();
-	const updatedMatch = value.match(/-\s*(?:Last\s+)?Updated\s*:?\s*(.+)$/i);
+	const updatedMatch = value.match(STATUS_UPDATE_REGEX) ?? value.match(TRAILING_DATE_REGEX);
 	const lastUpdated = updatedMatch?.[1].trim() ?? null;
 
 	const withoutUpdate = updatedMatch
@@ -58,24 +100,26 @@ function parseStatusLine(line: string): {
 	const statusMeta = metaMatch?.[1].trim() ?? null;
 
 	const withoutMeta = withoutUpdate.replace(/\[[^\]]+\]/g, " ");
-	const status = withoutMeta.replace(/_/g, " ").replace(/\s+/g, " ").trim() || null;
+	const status = normalizeStatus(withoutMeta.replace(/_/g, " "));
 
 	return { status, statusMeta, lastUpdated };
 }
 
 function getOrCreateGroup(groups: Map<string, MutableGroup>, circle: string): MutableGroup {
-	if (!groups.has(circle)) {
-		groups.set(circle, {
-			links: new Set<string>(),
-			missingLinks: new Set<string>(),
-			status: null,
-			statusMeta: null,
-			lastUpdated: null,
-		});
+	const existing = groups.get(circle);
+	if (existing) {
+		return existing;
 	}
 
-	// biome-ignore lint/style/noNonNullAssertion: group is guaranteed to exist
-	return groups.get(circle)!;
+	const created: MutableGroup = {
+		links: new Set<string>(),
+		missingLink: null,
+		status: null,
+		statusMeta: null,
+		lastUpdated: null,
+	};
+	groups.set(circle, created);
+	return created;
 }
 
 function collectGroups(messages: Message[]): Group[] {
@@ -122,16 +166,12 @@ function collectGroups(messages: Message[]): Group[] {
 				}
 			}
 
-			const links = [...line.matchAll(MEGA_LINK_REGEX)].map((match) => match[0]);
-			for (const link of links) {
-				group.links.add(link);
+			for (const match of line.matchAll(MEGA_LINK_REGEX)) {
+				group.links.add(match[0]);
 			}
 
-			if (MISSING_LINE_REGEX.test(line)) {
-				const missingLinks = [...line.matchAll(URL_REGEX)].map((match) => match[0]);
-				for (const missingLink of missingLinks) {
-					group.missingLinks.add(missingLink);
-				}
+			if (MISSING_LINE_REGEX.test(line) && group.missingLink === null) {
+				group.missingLink = line.match(URL_REGEX)?.at(0) ?? null;
 			}
 		}
 	}
@@ -140,7 +180,7 @@ function collectGroups(messages: Message[]): Group[] {
 		.map(([circle, group]) => ({
 			circle,
 			links: [...group.links],
-			missingLinks: [...group.missingLinks],
+			missingLink: group.missingLink,
 			status: group.status,
 			statusMeta: group.statusMeta,
 			lastUpdated: group.lastUpdated,
@@ -148,16 +188,18 @@ function collectGroups(messages: Message[]): Group[] {
 		.filter((group) => group.links.length > 0);
 }
 
-export function transform(inputArg?: string, outputArg?: string): void {
-	const inputPath = path.resolve(process.cwd(), inputArg ?? "input.messages.json");
-	const outputPath = path.resolve(process.cwd(), outputArg ?? "output.messages.json");
+export async function transform(inputArg?: string, outputArg?: string): Promise<void> {
+	const inputPath = path.resolve(process.cwd(), inputArg ?? "dist/input.json");
+	const outputPath = path.resolve(process.cwd(), outputArg ?? "dist/transformed.json");
 
-	if (!fs.existsSync(inputPath)) {
+	try {
+		await fs.access(inputPath);
+	} catch {
 		throw new Error(`Input file not found: ${inputPath}`);
 	}
 
-	const inputRaw = fs.readFileSync(inputPath, "utf8");
-	const inputJson = JSON.parse(inputRaw) as InputPayload;
+	const inputRaw = await fs.readFile(inputPath, "utf8");
+	const inputJson = parseJson<InputPayload>(inputRaw, inputPath);
 
 	if (!Array.isArray(inputJson.messages)) {
 		throw new Error("Invalid input JSON: expected top-level 'messages' array.");
@@ -166,7 +208,7 @@ export function transform(inputArg?: string, outputArg?: string): void {
 	const groups = collectGroups(inputJson.messages as Message[]);
 	const outputJson = { groups };
 
-	fs.writeFileSync(outputPath, JSON.stringify(outputJson, null, 2));
+	await fs.writeFile(outputPath, `${JSON.stringify(outputJson, null, 2)}\n`);
 
 	const totalLinks = groups.reduce((sum, group) => sum + group.links.length, 0);
 	console.log(`Wrote ${groups.length} circles and ${totalLinks} MEGA links to ${outputPath}`);

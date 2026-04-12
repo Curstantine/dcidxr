@@ -2,14 +2,21 @@ import { fetchReleases } from "./fetch.ts";
 import { transform } from "./transform.ts";
 
 async function main(): Promise<void> {
-	const [command, inputArg, outputArg] = process.argv.slice(2);
+	const args = process.argv.slice(2);
+	const normalizedArgs = args[1] === "--" ? [args[0], ...args.slice(2)] : args;
+	const [command, inputArg, outputArg] = normalizedArgs;
 
 	switch (command) {
 		case "transform":
-			transform(inputArg, outputArg);
+			await transform(inputArg, outputArg);
 			break;
 		case "fetch":
 			await fetchReleases(inputArg, outputArg);
+			break;
+		case "help":
+		case "--help":
+		case "-h":
+			printUsage();
 			break;
 		default:
 			printUsage();
@@ -19,7 +26,13 @@ async function main(): Promise<void> {
 }
 
 function printUsage(): void {
-	console.error("Usage: node src/index.ts <transform|fetch> [inputPath] [outputPath]");
+	console.error("Usage:");
+	console.error("  node src/index.ts transform [inputPath] [outputPath]");
+	console.error("  node src/index.ts fetch [inputPath] [outputPath]");
+	console.error("");
+	console.error("Defaults:");
+	console.error("  transform: input=dist/input.json output=dist/transformed.json");
+	console.error("  fetch:     input=dist/transformed.json output=dist/releases.json");
 }
 
 try {
