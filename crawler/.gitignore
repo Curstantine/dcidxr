@@ -1,2 +1,2 @@
-input.messages.json
-output.messages.json
+input.*.json
+output.*.json
