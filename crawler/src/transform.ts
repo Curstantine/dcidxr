@@ -1,6 +1,16 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
-import { Group, InputPayload, Message, TransformedPayload } from "./types";
+import {
+	assertFileExists,
+	readJsonFile,
+	resolveInputPath,
+	resolveOutputPath,
+	writeJsonFile,
+} from "./utils/files.ts";
+import type {
+	GroupBase,
+	Message,
+	TransformInputPayload,
+	TransformOutputPayload,
+} from "./utils/types.ts";
 
 const MEGA_LINK_REGEX = /https?:\/\/(?:www\.)?mega\.(?:nz|co\.nz)\/[^\s)>]+/gi;
 const URL_REGEX = /https?:\/\/[^\s)>]+/gi;
@@ -18,15 +28,6 @@ type MutableGroup = {
 	lastUpdated: string | null;
 };
 
-function parseJson<T>(raw: string, filePath: string): T {
-	try {
-		return JSON.parse(raw) as T;
-	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : String(error);
-		throw new Error(`Invalid JSON in ${filePath}: ${message}`);
-	}
-}
-
 function normalizeCircleName(rawName: string): string {
 	return rawName.trim();
 }
@@ -36,6 +37,7 @@ function normalizeStatus(rawStatus: string): string | null {
 		.replace(/^[:\-\s]+/, "")
 		.replace(/\s+/g, " ")
 		.trim();
+
 	if (normalized.length === 0) {
 		return null;
 	}
@@ -43,11 +45,11 @@ function normalizeStatus(rawStatus: string): string | null {
 	const compact = normalized.toLowerCase().replace(/[^a-z]/g, "");
 
 	if (compact.startsWith("incomplete") || compact.startsWith("incompleted")) {
-		return "Incomplete";
+		return "incomplete";
 	}
 
 	if (compact.startsWith("missing")) {
-		return "Missing";
+		return "missing";
 	}
 
 	if (
@@ -56,7 +58,7 @@ function normalizeStatus(rawStatus: string): string | null {
 		compact.endsWith("completed") ||
 		compact.startsWith("compelted")
 	) {
-		return "Completed";
+		return "completed";
 	}
 
 	return normalized;
@@ -102,11 +104,12 @@ function getOrCreateGroup(groups: Map<string, MutableGroup>, circle: string): Mu
 		statusMeta: null,
 		lastUpdated: null,
 	};
+
 	groups.set(circle, created);
 	return created;
 }
 
-function collectGroups(messages: Message[]): Group[] {
+function collectGroups(messages: Message[]): GroupBase[] {
 	const groups = new Map<string, MutableGroup>();
 
 	for (const message of messages) {
@@ -173,26 +176,21 @@ function collectGroups(messages: Message[]): Group[] {
 }
 
 export async function transform(inputArg?: string, outputArg?: string): Promise<void> {
-	const inputPath = path.resolve(process.cwd(), inputArg ?? "dist/input.json");
-	const outputPath = path.resolve(process.cwd(), outputArg ?? "dist/transformed.json");
+	const inputPath = resolveInputPath(inputArg, "dist/input.json");
+	const outputPath = resolveOutputPath(outputArg, "dist/transformed.json");
 
-	try {
-		await fs.access(inputPath);
-	} catch {
-		throw new Error(`Input file not found: ${inputPath}`);
-	}
+	await assertFileExists(inputPath);
 
-	const inputRaw = await fs.readFile(inputPath, "utf8");
-	const inputJson = parseJson<InputPayload>(inputRaw, inputPath);
+	const inputJson = await readJsonFile<TransformInputPayload>(inputPath);
 
 	if (!Array.isArray(inputJson.messages)) {
 		throw new Error("Invalid input JSON: expected top-level 'messages' array.");
 	}
 
 	const groups = collectGroups(inputJson.messages as Message[]);
-	const outputJson: TransformedPayload = { groups };
+	const outputJson: TransformOutputPayload = { groups };
 
-	await fs.writeFile(outputPath, `${JSON.stringify(outputJson, null, 2)}\n`);
+	await writeJsonFile(outputPath, outputJson);
 
 	const totalLinks = groups.reduce((sum, group) => sum + group.links.length, 0);
 	console.log(`Wrote ${groups.length} circles and ${totalLinks} MEGA links to ${outputPath}`);

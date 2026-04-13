@@ -1,9 +1,10 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
-
 import { config } from "dotenv";
 import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
+
+import { assertFileExists, readJsonFile, resolveInputPath } from "./utils/files.ts";
+import type { DbCircleStatus, FetchGroup, SyncInputPayload } from "./utils/types.ts";
+import { dedupeByKey, mapWithConcurrency, normalizeString } from "./utils/index.ts";
 
 import { relations } from "../../web/src/db/relations.ts";
 import { circle, release, serverMeta } from "../../web/src/db/schema.ts";
@@ -15,68 +16,22 @@ if (!process.env.DATABASE_URL) {
 }
 
 const db = drizzle(process.env.DATABASE_URL, { relations });
-
-type InputReleaseFile = {
-	name: string;
-	sizeBytes: number;
-};
-
-type InputRelease = {
-	name: string;
-	link: string;
-	directory: boolean;
-	sizeBytes: number;
-	files: InputReleaseFile[];
-};
-
-type InputGroup = {
-	circle: string;
-	links: string[];
-	missingLink?: string | null;
-	status?: string | null;
-	statusMeta?: string | null;
-	lastUpdated?: string | null;
-	releases: InputRelease[];
-	errors?: string[];
-};
-
-type InputPayload = {
-	groups?: InputGroup[];
-};
-
-type DbCircleStatus = "missing" | "incomplete" | "complete";
-
-function parseJson<T>(raw: string, filePath: string): T {
-	try {
-		return JSON.parse(raw) as T;
-	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : String(error);
-		throw new Error(`Invalid JSON in ${filePath}: ${message}`);
-	}
-}
-
-function normalizeString(value: string | null | undefined): string | null {
-	if (typeof value !== "string") return null;
-
-	const normalized = value.trim();
-	return normalized.length > 0 ? normalized : null;
-}
+const DEFAULT_CONCURRENCY = 8;
 
 function normalizeStatus(status: string | null | undefined): DbCircleStatus {
-	const normalized = normalizeString(status)?.toLowerCase() ?? "";
-
-	if (normalized.startsWith("complete")) {
-		return "complete";
+	switch (status) {
+		case "missing":
+			return "missing";
+		case "complete":
+		case "completed":
+			return "complete";
+		case "incomplete":
+		default:
+			return "incomplete";
 	}
-
-	if (normalized.startsWith("missing")) {
-		return "missing";
-	}
-
-	return "incomplete";
 }
 
-function buildStatusText(group: InputGroup, mappedStatus: DbCircleStatus): string {
+function buildStatusText(group: FetchGroup, mappedStatus: DbCircleStatus): string {
 	const sourceStatus = normalizeString(group.status);
 	const statusMeta = normalizeString(group.statusMeta);
 	const lastUpdated = normalizeString(group.lastUpdated);
@@ -109,64 +64,24 @@ function bytesToMegabytes(sizeBytes: number): number {
 	return Math.max(1, Math.ceil(sizeBytes / (1024 * 1024)));
 }
 
-function dedupeReleases(releases: InputRelease[]): InputRelease[] {
-	const seen = new Set<string>();
-	const deduped: InputRelease[] = [];
-
-	for (const item of releases) {
-		const key = `${item.name}::${item.link}::${item.sizeBytes}`;
-		if (seen.has(key)) continue;
-
-		seen.add(key);
-		deduped.push(item);
-	}
-
-	return deduped;
-}
-
-async function mapWithConcurrency<TInput, TOutput>(
-	values: TInput[],
-	concurrency: number,
-	mapper: (value: TInput, index: number) => Promise<TOutput>,
-): Promise<TOutput[]> {
-	if (values.length === 0) return [];
-
-	const results: TOutput[] = Array.from(
-		{ length: values.length },
-		() => null as unknown as TOutput,
-	);
-	let nextIndex = 0;
-
-	const worker = async (): Promise<void> => {
-		while (nextIndex < values.length) {
-			const currentIndex = nextIndex;
-			nextIndex += 1;
-			results[currentIndex] = await mapper(values[currentIndex], currentIndex);
-		}
-	};
-
-	const workerCount = Math.max(1, Math.min(concurrency, values.length));
-	await Promise.all(Array.from({ length: workerCount }, () => worker()));
-	return results;
-}
-
-function normalizeGroup(group: InputGroup): InputGroup {
+function normalizeGroup(group: FetchGroup): FetchGroup {
 	const circleName = normalizeString(group.circle);
 	if (!circleName) {
 		throw new Error("Invalid group: expected non-empty 'circle' name.");
 	}
 
 	const uniqueLinks = Array.isArray(group.links)
-		? [
-				...new Set(
-					group.links
-						.map(normalizeString)
-						.filter((link): link is string => link !== null),
-				),
-			]
+		? dedupeByKey(
+				group.links
+					.map((link) => normalizeString(link))
+					.filter((link): link is string => link !== null),
+				(link) => link,
+			)
 		: [];
 
-	const releases = Array.isArray(group.releases) ? dedupeReleases(group.releases) : [];
+	const releases = Array.isArray(group.releases)
+		? dedupeByKey(group.releases, (item) => `${item.name}::${item.link}::${item.sizeBytes}`)
+		: [];
 
 	return {
 		...group,
@@ -182,24 +97,21 @@ function normalizeGroup(group: InputGroup): InputGroup {
 }
 
 export async function sync(inputArg?: string): Promise<void> {
-	const inputPath = path.resolve(process.cwd(), inputArg ?? "dist/releases.json");
-	const DEFAULT_CONCURRENCY = 8;
+	const inputPath = resolveInputPath(inputArg, "dist/releases.json");
 
-	try {
-		await fs.access(inputPath);
-	} catch {
-		throw new Error(`Input file not found: ${inputPath}`);
-	}
+	await assertFileExists(inputPath);
 
-	const inputRaw = await fs.readFile(inputPath, "utf8");
-	const inputJson = parseJson<InputPayload>(inputRaw, inputPath);
+	const inputJson = await readJsonFile<SyncInputPayload>(inputPath);
 
 	if (!Array.isArray(inputJson.groups)) {
 		throw new Error("Invalid input JSON: expected top-level 'groups' array.");
 	}
 
 	const groups = inputJson.groups.map(normalizeGroup);
-	const circleNames = [...new Set(groups.map((group) => group.circle))];
+	const circleNames = dedupeByKey(
+		groups.map((group) => group.circle),
+		(name) => name,
+	);
 
 	if (circleNames.length === 0) {
 		console.log("No groups found. Nothing to sync.");
@@ -278,7 +190,6 @@ export async function sync(inputArg?: string): Promise<void> {
 					status: mappedStatus,
 					statusText,
 					missingLink: group.missingLink ?? null,
-					lastUpdated: group.lastUpdated ?? null,
 				})
 				.where(eq(circle.id, circleId));
 
@@ -298,7 +209,7 @@ export async function sync(inputArg?: string): Promise<void> {
 
 		return {
 			releaseCount: group.releases.length,
-			errorCount: group.errors?.length ?? 0,
+			errorCount: group.errors.length,
 		};
 	});
 

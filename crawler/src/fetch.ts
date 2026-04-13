@@ -1,48 +1,39 @@
-import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import { File as MegaFile } from "megajs";
 
-type GroupInput = {
-	circle: string;
-	links: string[];
-	missingLinks?: string[];
-	status?: string | null;
-	statusMeta?: string | null;
-	lastUpdated?: string | null;
-};
-
-type InputPayload = {
-	groups?: GroupInput[];
-};
-
-type ReleaseFile = {
-	name: string;
-	sizeBytes: number;
-};
-
-type Release = {
-	name: string;
-	link: string;
-	directory: boolean;
-	sizeBytes: number;
-	files: ReleaseFile[];
-};
-
-type GroupOutput = GroupInput & {
-	releases: Release[];
-	errors: string[];
-};
-
-type OutputPayload = {
-	groups: GroupOutput[];
-};
+import {
+	assertFileExists,
+	readJsonFile,
+	resolveInputPath,
+	resolveOutputPath,
+	writeJsonFile,
+} from "./utils/files.ts";
+import type {
+	FetchGroup,
+	FetchInputPayload,
+	FetchOutputPayload,
+	Release,
+	ReleaseFile,
+} from "./utils/types.ts";
+import { dedupeByKey, mapWithConcurrency, normalizeNodeName } from "./utils/index.ts";
 
 type MegaNode = {
 	name: string | null;
 	size?: number;
 	directory: boolean;
 	children?: MegaNode[];
+};
+
+type LinkTask = {
+	groupIndex: number;
+	circle: string;
+	link: string;
+};
+
+type GroupAccumulator = {
+	releaseSets: Release[][];
+	errors: string[];
 };
 
 const AUDIO_FILE_EXTENSIONS = new Set([
@@ -62,31 +53,6 @@ const AUDIO_FILE_EXTENSIONS = new Set([
 ]);
 
 const DEFAULT_CONCURRENCY = 4;
-
-type LinkTask = {
-	groupIndex: number;
-	circle: string;
-	link: string;
-};
-
-type GroupAccumulator = {
-	releaseSets: Release[][];
-	errors: string[];
-};
-
-function parseJson<T>(raw: string, filePath: string): T {
-	try {
-		return JSON.parse(raw) as T;
-	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : String(error);
-		throw new Error(`Invalid JSON in ${filePath}: ${message}`);
-	}
-}
-
-function normalizeNodeName(name: string | null | undefined, fallback = "Unknown"): string {
-	const normalized = typeof name === "string" ? name.trim() : "";
-	return normalized.length > 0 ? normalized : fallback;
-}
 
 function isAudioFileName(name: string): boolean {
 	const extension = path.extname(name).toLowerCase();
@@ -108,7 +74,7 @@ function collectLeafFiles(node: MegaNode): ReleaseFile[] {
 	}
 
 	if (node.children === undefined) return [];
-	return node.children.flatMap((x) => collectLeafFiles(x));
+	return node.children.flatMap((child) => collectLeafFiles(child));
 }
 
 function sumFileSizes(files: ReleaseFile[]): number {
@@ -150,62 +116,23 @@ async function fetchReleasesFromLink(link: string): Promise<Release[]> {
 		return [{ name, link, directory: true, sizeBytes: 0, files: [] }];
 	}
 
-	return Promise.all(root.children.map((x) => buildRelease(x, link)));
-}
-
-async function mapWithConcurrency<TInput, TOutput>(
-	values: TInput[],
-	concurrency: number,
-	mapper: (value: TInput, index: number) => Promise<TOutput>,
-): Promise<TOutput[]> {
-	if (values.length === 0) return [];
-
-	const results: TOutput[] = Array.from(
-		{ length: values.length },
-		() => null as unknown as TOutput,
-	);
-	let nextIndex = 0;
-
-	const worker = async (): Promise<void> => {
-		while (nextIndex < values.length) {
-			const currentIndex = nextIndex;
-			nextIndex += 1;
-			results[currentIndex] = await mapper(values[currentIndex], currentIndex);
-		}
-	};
-
-	const workerCount = Math.max(1, Math.min(concurrency, values.length));
-	await Promise.all(Array.from({ length: workerCount }, () => worker()));
-	return results;
+	return Promise.all(root.children.map((child) => buildRelease(child, link)));
 }
 
 function dedupeReleases(releases: Release[]): Release[] {
-	const seen = new Set<string>();
-	const deduped: Release[] = [];
-
-	for (const release of releases) {
-		const key = `${release.name}::${release.link}::${release.sizeBytes}`;
-		if (seen.has(key)) continue;
-
-		seen.add(key);
-		deduped.push(release);
-	}
-
-	return deduped;
+	return dedupeByKey(
+		releases,
+		(release) => `${release.name}::${release.link}::${release.sizeBytes}`,
+	);
 }
 
 export async function fetchReleases(inputArg?: string, outputArg?: string): Promise<void> {
-	const inputPath = path.resolve(process.cwd(), inputArg ?? "dist/transformed.json");
-	const outputPath = path.resolve(process.cwd(), outputArg ?? "dist/releases.json");
+	const inputPath = resolveInputPath(inputArg, "dist/transformed.json");
+	const outputPath = resolveOutputPath(outputArg, "dist/releases.json");
 
-	try {
-		await fs.access(inputPath);
-	} catch {
-		throw new Error(`Input file not found: ${inputPath}`);
-	}
+	await assertFileExists(inputPath);
 
-	const inputRaw = await fs.readFile(inputPath, "utf8");
-	const inputJson = parseJson<InputPayload>(inputRaw, inputPath);
+	const inputJson = await readJsonFile<FetchInputPayload>(inputPath);
 
 	if (!Array.isArray(inputJson.groups)) {
 		throw new Error("Invalid input JSON: expected top-level 'groups' array.");
@@ -251,7 +178,7 @@ export async function fetchReleases(inputArg?: string, outputArg?: string): Prom
 		}
 	}
 
-	const outputGroups = groups.map((group, groupIndex) => {
+	const outputGroups: FetchGroup[] = groups.map((group, groupIndex) => {
 		const accumulator = groupAccumulators[groupIndex];
 		const releases = dedupeReleases(accumulator.releaseSets.flat()).sort((a, b) =>
 			a.name.localeCompare(b.name),
@@ -264,8 +191,8 @@ export async function fetchReleases(inputArg?: string, outputArg?: string): Prom
 		};
 	});
 
-	const outputJson: OutputPayload = { groups: outputGroups };
-	await fs.writeFile(outputPath, `${JSON.stringify(outputJson, null, 2)}\n`);
+	const outputJson: FetchOutputPayload = { groups: outputGroups };
+	await writeJsonFile(outputPath, outputJson);
 
 	const totalReleases = outputGroups.reduce((sum, group) => sum + group.releases.length, 0);
 	console.log(
