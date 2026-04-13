@@ -1,57 +1,57 @@
 {
-    "$schema": "https://biomejs.dev/schemas/2.4.11/schema.json",
-    "extends": "//",
-    "vcs": {
-        "enabled": false,
-        "clientKind": "git",
-        "useIgnoreFile": false
-    },
-    "files": {
-        "ignoreUnknown": false,
-        "includes": [
-            "*.ts",
-            "**/src/**/*",
-            "**/.vscode/**/*",
-            "**/index.html",
-            "**/vite.config.ts",
-            "*.json",
-            "!**/src/routeTree.gen.ts"
-        ]
-    },
-    "assist": {
-        "actions": {
-            "source": {
-                "organizeImports": {
-                    "level": "on",
-                    "options": {
-                        "groups": [
-                            ":NODE:",
-                            ":BLANK_LINE:",
-                            ":PACKAGE:",
-                            ":BLANK_LINE:",
-                            ":ALIAS:",
-                            ":BLANK_LINE:",
-                            ":PATH:"
-                        ]
-                    }
-                }
-            }
-        }
-    },
-    "linter": {
-        "enabled": true,
-        "rules": {
-            "recommended": true
-        }
-    },
-    "css": {
-        "parser": {
-            "tailwindDirectives": true
-        }
-    },
-    "javascript": {
-        "formatter": {
-            "quoteStyle": "double"
-        }
-    }
+	"$schema": "https://biomejs.dev/schemas/2.4.11/schema.json",
+	"extends": "//",
+	"vcs": {
+		"enabled": false,
+		"clientKind": "git",
+		"useIgnoreFile": false
+	},
+	"files": {
+		"ignoreUnknown": false,
+		"includes": [
+			"*.ts",
+			"**/src/**/*",
+			"**/.vscode/**/*",
+			"**/index.html",
+			"**/vite.config.ts",
+			"*.json",
+			"!**/src/routeTree.gen.ts"
+		]
+	},
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": {
+					"level": "on",
+					"options": {
+						"groups": [
+							":NODE:",
+							":BLANK_LINE:",
+							":PACKAGE:",
+							":BLANK_LINE:",
+							":ALIAS:",
+							":BLANK_LINE:",
+							":PATH:"
+						]
+					}
+				}
+			}
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true
+		}
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double"
+		}
+	}
 }
