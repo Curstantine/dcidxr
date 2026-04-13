@@ -2,11 +2,10 @@ import { useDebouncer } from "@tanstack/react-pacer";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { LucideCopy, LucideSearch } from "lucide-react";
-import { type ChangeEvent, type SubmitEvent, Suspense } from "react";
+import { type ChangeEvent, type SubmitEvent, Suspense, useState } from "react";
 import { toast } from "sonner";
 
 import { getSession } from "@/auth/func";
-import { Badge } from "@/components/badge";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import {
@@ -17,9 +16,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/select";
+import { StatusIndicator } from "@/components/status-indicator";
 import { circlesQueryOptions, type FetchCirclesShape, fetchCirclesInput } from "@/queries/circle";
-import type { CircleStatus, QueryType } from "@/types/circle";
-import { getCircleStatusLabel, SEARCH_TYPE_ITEMS } from "@/utils/grammar";
+import type { SearchType } from "@/types/circle";
+import { SEARCH_TYPE_ITEMS } from "@/utils/grammar";
 
 export const Route = createFileRoute("/")({
 	validateSearch: fetchCirclesInput,
@@ -68,11 +68,14 @@ function Form() {
 		select: ({ search, searchType }) => ({ search, searchType }),
 	});
 
+	const [typeValue, setTypeValue] = useState<SearchType>(searchType);
+
 	const handleSearchChange = useDebouncer(
-		(value: ChangeEvent<HTMLInputElement>) => {
+		(e: ChangeEvent<HTMLInputElement>) => {
+			e.preventDefault();
 			router.preloadRoute({
 				to: "/",
-				search: { search: value.target.value, searchType },
+				search: { search: e.target.value, searchType: typeValue },
 			});
 		},
 		{ wait: 300, key: "HandleSearchChange" },
@@ -81,11 +84,13 @@ function Form() {
 	const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		const formData = new FormData(e.currentTarget);
-		const searchValue = formData.get("search") as string;
+		const value = formData.get("search") as string;
+
+		handleSearchChange.flush();
 
 		router.navigate({
 			to: "/",
-			search: { search: searchValue, searchType },
+			search: { search: value, searchType: typeValue },
 		});
 	};
 
@@ -94,10 +99,11 @@ function Form() {
 			onSubmit={handleSubmit}
 			className="grid grid-cols-[7rem_1fr] sm:grid-cols-[7rem_1fr_5rem] gap-x-2 items-center sticky top-10 h-18 sm:h-10 bg-background"
 		>
-			<Select<QueryType>
+			<Select<SearchType>
 				name="searchType"
-				defaultValue={searchType}
 				items={SEARCH_TYPE_ITEMS}
+				value={typeValue}
+				onValueChange={(value) => setTypeValue(value ?? "circle")}
 			>
 				<SelectTrigger className="w-28">
 					<SelectValue placeholder="Query" />
@@ -128,15 +134,15 @@ function Form() {
 }
 
 function Results() {
-	const { search, cursor } = Route.useSearch({
-		select: ({ search, cursor }) => ({ search, cursor }),
+	const { search, cursor, searchType } = Route.useSearch({
+		select: ({ search, cursor, searchType }) => ({ search, cursor, searchType }),
 	});
 	const {
 		data: { circles, total },
-	} = useSuspenseQuery(circlesQueryOptions({ search, cursor }));
+	} = useSuspenseQuery(circlesQueryOptions({ search, cursor, searchType }));
 
 	return (
-		<section className="flex flex-col gap-4 mt-2">
+		<section className="flex flex-col gap-2 mt-2">
 			<span className="text-sm">
 				Matching: {total.circles} circles, {total.releases} releases
 			</span>
@@ -161,7 +167,6 @@ function Results() {
 }
 
 function CircleLine({
-	id,
 	name,
 	status,
 	statusText,
@@ -201,17 +206,5 @@ function CircleLine({
 				))}
 			</ul>
 		</li>
-	);
-}
-
-function StatusIndicator({ status, statusText }: { status: CircleStatus; statusText: string }) {
-	return (
-		<Badge
-			title={statusText}
-			variant={status === "complete" ? "default" : "destructive"}
-			className="cursor-default ml-1"
-		>
-			{getCircleStatusLabel(status)}
-		</Badge>
 	);
 }

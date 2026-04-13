@@ -115,14 +115,14 @@ function sumFileSizes(files: ReleaseFile[]): number {
 	return files.reduce((total, file) => total + file.sizeBytes, 0);
 }
 
-async function buildRelease(node: MegaFile): Promise<Release> {
+async function buildRelease(node: MegaFile, rootLink: string): Promise<Release> {
 	const name = normalizeNodeName(node.name);
 	const files = node.directory
 		? collectLeafFiles(node)
 		: [{ name, sizeBytes: typeof node.size === "number" ? node.size : 0 }];
 
 	const sizeBytes = sumFileSizes(files);
-	const link = await node.link(false);
+	const link = `${rootLink}/folder/${getDownloadId(node)}`;
 
 	return {
 		name,
@@ -143,14 +143,14 @@ async function fetchReleasesFromLink(link: string): Promise<Release[]> {
 	const name = normalizeNodeName(root.name, "Root");
 
 	if (!root.directory) {
-		return [await buildRelease(root)];
+		return [await buildRelease(root, link)];
 	}
 
 	if (root.children === undefined || root.children.length === 0) {
-		return [{ name, link: await root.link(false), directory: true, sizeBytes: 0, files: [] }];
+		return [{ name, link, directory: true, sizeBytes: 0, files: [] }];
 	}
 
-	return Promise.all(root.children.map(buildRelease));
+	return Promise.all(root.children.map((x) => buildRelease(x, link)));
 }
 
 async function mapWithConcurrency<TInput, TOutput>(

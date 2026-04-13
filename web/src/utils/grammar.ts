@@ -1,8 +1,8 @@
-import type { CircleStatus, QueryType } from "@/types/circle";
+import type { CircleStatus, SearchType } from "@/types/circle";
 
-export const SEARCH_TYPE_ITEMS: readonly { value: QueryType; label: string }[] = [
-	{ value: "release", label: "Releases" },
+export const SEARCH_TYPE_ITEMS: readonly { value: SearchType; label: string }[] = [
 	{ value: "circle", label: "Circles" },
+	{ value: "release", label: "Releases" },
 ];
 
 export function getCircleStatusLabel(status: CircleStatus): string {
