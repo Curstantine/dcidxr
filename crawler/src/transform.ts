@@ -25,7 +25,6 @@ type MutableGroup = {
 	missingLink: string | null;
 	status: string | null;
 	statusMeta: string | null;
-	lastUpdated: string | null;
 };
 
 function normalizeCircleName(rawName: string): string {
@@ -102,7 +101,6 @@ function getOrCreateGroup(groups: Map<string, MutableGroup>, circle: string): Mu
 		missingLink: null,
 		status: null,
 		statusMeta: null,
-		lastUpdated: null,
 	};
 
 	groups.set(circle, created);
@@ -147,10 +145,6 @@ function collectGroups(messages: Message[]): GroupBase[] {
 				if (parsedStatus.statusMeta) {
 					group.statusMeta = parsedStatus.statusMeta;
 				}
-
-				if (parsedStatus.lastUpdated) {
-					group.lastUpdated = parsedStatus.lastUpdated;
-				}
 			}
 
 			for (const match of line.matchAll(MEGA_LINK_REGEX)) {
@@ -170,7 +164,6 @@ function collectGroups(messages: Message[]): GroupBase[] {
 			missingLink: group.missingLink,
 			status: group.status,
 			statusMeta: group.statusMeta,
-			lastUpdated: group.lastUpdated,
 		}))
 		.filter((group) => group.links.length > 0);
 }

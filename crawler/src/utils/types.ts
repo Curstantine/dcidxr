@@ -12,7 +12,6 @@ export type GroupBase = {
 	missingLink: string | null;
 	status: string | null;
 	statusMeta: string | null;
-	lastUpdated: string | null;
 };
 
 export type TransformOutputPayload = {

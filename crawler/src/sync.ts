@@ -26,6 +26,7 @@ function normalizeStatus(status: string | null | undefined): DbCircleStatus {
 		case "completed":
 			return "complete";
 		case "incomplete":
+			return "incomplete";
 		default:
 			return "incomplete";
 	}
@@ -34,13 +35,10 @@ function normalizeStatus(status: string | null | undefined): DbCircleStatus {
 function buildStatusText(group: FetchGroup, mappedStatus: DbCircleStatus): string {
 	const sourceStatus = normalizeString(group.status);
 	const statusMeta = normalizeString(group.statusMeta);
-	const lastUpdated = normalizeString(group.lastUpdated);
 
-	const parts = [
-		sourceStatus,
-		statusMeta ? `[${statusMeta}]` : null,
-		lastUpdated ? `Updated: ${lastUpdated}` : null,
-	].filter((value): value is string => value !== null);
+	const parts = [sourceStatus, statusMeta ? `[${statusMeta}]` : null].filter(
+		(value): value is string => value !== null,
+	);
 
 	if (parts.length > 0) {
 		return parts.join(" - ");
@@ -90,7 +88,6 @@ function normalizeGroup(group: FetchGroup): FetchGroup {
 		missingLink: normalizeString(group.missingLink),
 		status: normalizeString(group.status),
 		statusMeta: normalizeString(group.statusMeta),
-		lastUpdated: normalizeString(group.lastUpdated),
 		releases,
 		errors: Array.isArray(group.errors) ? group.errors : [],
 	};
@@ -218,9 +215,12 @@ export async function sync(inputArg?: string): Promise<void> {
 	const totalErrors = syncResults.reduce((total, result) => total + result.errorCount, 0);
 
 	await db
-		.update(serverMeta)
-		.set({ value: new Date().toISOString() })
-		.where(eq(serverMeta.key, "last_crawled"));
+		.insert(serverMeta)
+		.values({ key: "last_indexed", value: new Date().toISOString() })
+		.onConflictDoUpdate({
+			target: serverMeta.key,
+			set: { value: new Date().toISOString() },
+		});
 
 	console.log(
 		`Synced ${syncedCircles} circles and ${syncedReleases} releases from ${inputPath}${totalErrors > 0 ? ` (${totalErrors} fetch errors recorded in source JSON)` : ""}`,
