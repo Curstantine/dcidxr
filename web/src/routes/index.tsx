@@ -200,7 +200,7 @@ function Results() {
 						onClick={() => fetchNextPage()}
 						disabled={isFetchingNextPage}
 					>
-						{isFetchingNextPage ? "Loading..." : "Load next"}
+						{isFetchingNextPage ? "Loading..." : "Show more"}
 					</Button>
 				) : (
 					<span className="text-sm text-muted-foreground">No more results</span>
