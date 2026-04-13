@@ -1,7 +1,7 @@
 import { useDebouncer } from "@tanstack/react-pacer";
-import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
+import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
-import { LucideCopy, LucideSearch } from "lucide-react";
+import { LucideCopy, LucideGitBranch, LucideSearch } from "lucide-react";
 import { type ChangeEvent, type SubmitEvent, Suspense, useState } from "react";
 import { toast } from "sonner";
 
@@ -23,7 +23,9 @@ import {
 	fetchCirclesInput,
 } from "@/queries/circle";
 import type { SearchType } from "@/types/circle";
-import { SEARCH_TYPE_ITEMS } from "@/utils/grammar";
+import { getServerMetaLabel, SEARCH_TYPE_ITEMS } from "@/utils/grammar";
+import { env } from "@/env";
+import { serverMetaQueryOptions } from "@/queries/ meta";
 
 export const Route = createFileRoute("/")({
 	validateSearch: fetchCirclesInput,
@@ -32,6 +34,7 @@ export const Route = createFileRoute("/")({
 		searchType: search.searchType,
 	}),
 	loader: async ({ context, deps }) => {
+		context.queryClient.ensureQueryData(serverMetaQueryOptions);
 		return context.queryClient.ensureInfiniteQueryData(
 			circlesInfiniteQueryOptions({ search: deps.search, searchType: deps.searchType }),
 		);
@@ -57,7 +60,31 @@ function RouteComponent() {
 			<Suspense fallback={<span>Loading...</span>}>
 				<Results />
 			</Suspense>
+
+			<footer className="flex justify-end border-t border-border mt-8 py-4 text-sm">
+				<FooterInfo />
+
+				<div className="flex-1" />
+				<a href={env.VITE_SOURCE_URL} target="_blank" rel="noopener noreferrer">
+					Source
+				</a>
+			</footer>
 		</main>
+	);
+}
+
+function FooterInfo() {
+	const { data } = useSuspenseQuery(serverMetaQueryOptions);
+
+	return (
+		<section className="flex flex-col">
+			<h2 className="text-foreground">Metadata</h2>
+			{data.map(({ key, value }) => (
+				<span key={key} className="text-xs text-muted-foreground">
+					{getServerMetaLabel(key)}: {value}
+				</span>
+			))}
+		</section>
 	);
 }
 
@@ -159,13 +186,12 @@ function Results() {
 						statusText={circle.statusText}
 						megaLinks={circle.megaLinks}
 						missingLink={circle.missingLink}
-						lastUpdated={circle.lastUpdated}
 						releases={circle.releases}
 					/>
 				))}
 			</ul>
 
-			<section className="flex justify-center py-4">
+			<section className="flex justify-center mt-2">
 				{hasNextPage ? (
 					<Button
 						type="button"

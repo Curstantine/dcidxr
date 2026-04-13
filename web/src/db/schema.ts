@@ -13,7 +13,6 @@ export const circle = pgTable(
 		status: circleStatusEnum("status").notNull().default("incomplete"),
 		statusText: text("status_text").notNull().default("Missing releases"),
 		missingLink: text("missing_link"),
-		lastUpdated: text("last_updated"),
 	},
 	(table) => [index("circles_name_idx").on(table.name)],
 );
