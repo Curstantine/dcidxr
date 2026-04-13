@@ -1,3 +1,3 @@
 export type CircleStatus = "missing" | "incomplete" | "complete";
 
-export type SearchType = "release" | "circle";
+export type SearchType = "release" | "circle" | "all";
