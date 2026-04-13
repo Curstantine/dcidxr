@@ -4,6 +4,7 @@ import { createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/reac
 
 import TanStackQueryDevtools from "@/integrations/query/devtools";
 import TanStackRouterDevtools from "@/integrations/router/devtools";
+import TanstackPacerDevtools from "@/integrations/pacer/devtools";
 
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/sonner";
@@ -33,8 +34,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			<body className="font-sans antialiased wrap-anywhere selection:bg-[rgba(79,184,178,0.24)]">
 				{children}
 				<TanStackDevtools
+					eventBusConfig={{ debug: false }}
 					config={{ position: "bottom-right" }}
-					plugins={[TanStackRouterDevtools, TanStackQueryDevtools]}
+					plugins={[TanStackRouterDevtools, TanStackQueryDevtools, TanstackPacerDevtools]}
 				/>
 				<Scripts />
 				<Toaster />

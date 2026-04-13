@@ -26,6 +26,8 @@
         "@t3-oss/env-core": "^0.13.11",
         "@tailwindcss/vite": "^4.2.2",
         "@tanstack/react-devtools": "latest",
+        "@tanstack/react-pacer": "^0.21.1",
+        "@tanstack/react-pacer-devtools": "^0.6.1",
         "@tanstack/react-query": "latest",
         "@tanstack/react-query-devtools": "latest",
         "@tanstack/react-router": "latest",

@@ -8,11 +8,12 @@ export const fetchCirclesInput = z.object({
 	limit: z.number().optional().default(1000),
 	search: z.string().optional(),
 	cursor: z.number().optional(),
+	searchType: z.enum(["release", "circle"]).optional().default("release"),
 });
 
 export const fetchCircles = createServerFn({ method: "GET" })
 	.inputValidator(fetchCirclesInput)
-	.handler(async ({ data: { limit, search, cursor } }) => {
+	.handler(async ({ data: { limit, search, cursor, searchType } }) => {
 		const query = await db.query.circle.findMany({
 			limit,
 			where: {
@@ -28,7 +29,10 @@ export const fetchCircles = createServerFn({ method: "GET" })
 
 		return {
 			circles: query,
-			// total: query,
+			total: {
+				circles: query.length,
+				releases: query.reduce((x, { releases }) => x + releases.length, 0),
+			},
 		};
 	});
 

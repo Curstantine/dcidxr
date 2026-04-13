@@ -1,15 +1,14 @@
+import { useDebouncer } from "@tanstack/react-pacer";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { LucideCopy, LucideSearch } from "lucide-react";
-import { Suspense, useState } from "react";
+import { type ChangeEvent, type SubmitEvent, Suspense } from "react";
 import { toast } from "sonner";
 
 import { getSession } from "@/auth/func";
 import { Badge } from "@/components/badge";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
-import { circlesQueryOptions, fetchCirclesInput, type FetchCirclesShape } from "@/queries/circle";
-import type { CircleStatus, QueryType } from "@/types/circle";
 import {
 	Select,
 	SelectContent,
@@ -18,14 +17,24 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/select";
+import { circlesQueryOptions, type FetchCirclesShape, fetchCirclesInput } from "@/queries/circle";
+import type { CircleStatus, QueryType } from "@/types/circle";
 import { getCircleStatusLabel, SEARCH_TYPE_ITEMS } from "@/utils/grammar";
 
 export const Route = createFileRoute("/")({
 	validateSearch: fetchCirclesInput,
-	loaderDeps: ({ search }) => ({ search: search.search, cursor: search.cursor }),
+	loaderDeps: ({ search }) => ({
+		search: search.search,
+		cursor: search.cursor,
+		searchType: search.searchType,
+	}),
 	loader: async ({ context, deps }) => {
 		return context.queryClient.ensureQueryData(
-			circlesQueryOptions({ search: deps.search, cursor: deps.cursor }),
+			circlesQueryOptions({
+				search: deps.search,
+				cursor: deps.cursor,
+				searchType: deps.searchType,
+			}),
 		);
 	},
 	beforeLoad: async () => {
@@ -54,9 +63,42 @@ function RouteComponent() {
 }
 
 function Form() {
+	const router = useRouter();
+	const { search, searchType } = Route.useSearch({
+		select: ({ search, searchType }) => ({ search, searchType }),
+	});
+
+	const handleSearchChange = useDebouncer(
+		(value: ChangeEvent<HTMLInputElement>) => {
+			router.preloadRoute({
+				to: "/",
+				search: { search: value.target.value, searchType },
+			});
+		},
+		{ wait: 300, key: "HandleSearchChange" },
+	);
+
+	const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
+		e.preventDefault();
+		const formData = new FormData(e.currentTarget);
+		const searchValue = formData.get("search") as string;
+
+		router.navigate({
+			to: "/",
+			search: { search: searchValue, searchType },
+		});
+	};
+
 	return (
-		<form className="grid grid-cols-[7rem_1fr] sm:grid-cols-[7rem_1fr_5rem] gap-x-2 items-center sticky top-10 h-18 sm:h-10 bg-background">
-			<Select<QueryType> name="searchType" items={SEARCH_TYPE_ITEMS}>
+		<form
+			onSubmit={handleSubmit}
+			className="grid grid-cols-[7rem_1fr] sm:grid-cols-[7rem_1fr_5rem] gap-x-2 items-center sticky top-10 h-18 sm:h-10 bg-background"
+		>
+			<Select<QueryType>
+				name="searchType"
+				defaultValue={searchType}
+				items={SEARCH_TYPE_ITEMS}
+			>
 				<SelectTrigger className="w-28">
 					<SelectValue placeholder="Query" />
 				</SelectTrigger>
@@ -70,7 +112,13 @@ function Form() {
 					</SelectGroup>
 				</SelectContent>
 			</Select>
-			<Input type="search" name="search" placeholder="Search..." />
+			<Input
+				type="search"
+				name="search"
+				placeholder="Search..."
+				defaultValue={search}
+				onChange={handleSearchChange.maybeExecute}
+			/>
 			<Button type="submit" className="col-span-full sm:col-span-1">
 				<LucideSearch />
 				Search
@@ -83,16 +131,18 @@ function Results() {
 	const { search, cursor } = Route.useSearch({
 		select: ({ search, cursor }) => ({ search, cursor }),
 	});
-	const circlesQuery = useSuspenseQuery(circlesQueryOptions({ search, cursor }));
+	const {
+		data: { circles, total },
+	} = useSuspenseQuery(circlesQueryOptions({ search, cursor }));
 
 	return (
 		<section className="flex flex-col gap-4 mt-2">
 			<span className="text-sm">
-				Matching: {circlesQuery.data.circles.length} circles, X releases
+				Matching: {total.circles} circles, {total.releases} releases
 			</span>
 
 			<ul>
-				{circlesQuery.data.circles.map((circle) => (
+				{circles.map((circle) => (
 					<CircleLine
 						key={circle.id}
 						id={circle.id}

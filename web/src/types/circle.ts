@@ -1,3 +1,3 @@
 export type CircleStatus = "missing" | "incomplete" | "complete";
 
-export type QueryType = "releases" | "circles";
+export type QueryType = "release" | "circle";
