@@ -6,6 +6,7 @@ import TanStackQueryDevtools from "@/integrations/query/devtools";
 import TanStackRouterDevtools from "@/integrations/router/devtools";
 
 import appCss from "../styles.css?url";
+import { Toaster } from "@/components/sonner";
 
 interface MyRouterContext {
 	queryClient: QueryClient;
@@ -36,6 +37,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 					plugins={[TanStackRouterDevtools, TanStackQueryDevtools]}
 				/>
 				<Scripts />
+				<Toaster />
 			</body>
 		</html>
 	);

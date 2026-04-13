@@ -56,7 +56,7 @@
 }
 
 @plugin "@iconify/tailwind4" {
-	prefixes: bxl, material-symbols;
+	prefixes: bxl;
 }
 
 :root {

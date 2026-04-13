@@ -154,6 +154,9 @@ importers:
       lucide-react:
         specifier: ^1.8.0
         version: 1.8.0(react@19.2.5)
+      next-themes:
+        specifier: ^0.4.6
+        version: 0.4.6(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       pg:
         specifier: ^8.20.0
         version: 8.20.0
@@ -166,6 +169,9 @@ importers:
       shadcn:
         specifier: ^4.2.0
         version: 4.2.0(@types/node@24.12.2)(typescript@5.9.3)
+      sonner:
+        specifier: ^2.0.7
+        version: 2.0.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       tailwind-merge:
         specifier: ^3.5.0
         version: 3.5.0
@@ -185,9 +191,6 @@ importers:
       '@iconify-json/bxl':
         specifier: ^1.2.4
         version: 1.2.4
-      '@iconify-json/material-symbols':
-        specifier: ^1.2.66
-        version: 1.2.66
       '@iconify/tailwind4':
         specifier: ^1.2.3
         version: 1.2.3(tailwindcss@4.2.2)
@@ -1068,9 +1071,6 @@ packages:
 
   '@iconify-json/bxl@1.2.4':
     resolution: {integrity: sha512-R6gVQSxB1+XeVClK7KdACnk1SfP8xiAu6LHuKZmp6Ro5zwMQbpe9vFBv30F6eHMDL8lZ7eXuac5SRJ9C8DKehQ==}
-
-  '@iconify-json/material-symbols@1.2.66':
-    resolution: {integrity: sha512-pgZmK8RBAaYjfHnR0DcUDraduiJwjGDi4FwCXp89ecyNfs6fcL8j+TJ+Xqkyv6v7c31j/4OlL5ly86ATT6yTpA==}
 
   '@iconify/tailwind4@1.2.3':
     resolution: {integrity: sha512-z8SKiMHRASJKF/IY//87MF88lcB7ulxh8vlhQXXLWsBkNtOh6ese9R41MyGpQeqXdRvQVt+/fX2glQtHFjQ+MA==}
@@ -4160,6 +4160,12 @@ packages:
     resolution: {integrity: sha512-8Ofs/AUQh8MaEcrlq5xOX0CQ9ypTF5dl78mjlMNfOK08fzpgTHQRQPBxcPlEtIw0yRpws+Zo/3r+5WRby7u3Gg==}
     engines: {node: '>= 0.6'}
 
+  next-themes@0.4.6:
+    resolution: {integrity: sha512-pZvgD5L0IEvX5/9GWyHMf3m8BKiVQwsCMHfoFosXtXBMnaS0ZnIJ9ST4b4NqLVKDEm8QBxoNNGNaBv2JNF6XNA==}
+    peerDependencies:
+      react: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
+      react-dom: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
+
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
     engines: {node: '>=10.5.0'}
@@ -4857,6 +4863,12 @@ packages:
     resolution: {integrity: sha512-F3aPsX6hVw9ttm5LYlth8Q15x6MlI/J3Dn+o3EQyRTtTxidepSTwAYdozt01/YA+7ObcciagGEyXIopGZzQtbA==}
     peerDependencies:
       solid-js: ^1.3
+
+  sonner@2.0.7:
+    resolution: {integrity: sha512-W6ZN4p58k8aDKA4XPcx2hpIQXBRAgyiWVkYhT7CvK6D3iAu7xjvVyhQHg2/iaKJZ1XVJ4r7XuwGL+WGEK37i9w==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
+      react-dom: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
@@ -6354,10 +6366,6 @@ snapshots:
   '@humanwhocodes/object-schema@2.0.3': {}
 
   '@iconify-json/bxl@1.2.4':
-    dependencies:
-      '@iconify/types': 2.0.0
-
-  '@iconify-json/material-symbols@1.2.66':
     dependencies:
       '@iconify/types': 2.0.0
 
@@ -9636,6 +9644,11 @@ snapshots:
 
   negotiator@1.0.0: {}
 
+  next-themes@0.4.6(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
+    dependencies:
+      react: 19.2.5
+      react-dom: 19.2.5(react@19.2.5)
+
   node-domexception@1.0.0: {}
 
   node-exports-info@1.6.0:
@@ -10431,6 +10444,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
     optional: true
+
+  sonner@2.0.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
+    dependencies:
+      react: 19.2.5
+      react-dom: 19.2.5(react@19.2.5)
 
   source-map-js@1.2.1: {}
 
