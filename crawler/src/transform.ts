@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { Group, InputPayload, Message, TransformedPayload } from "./types";
 
 const MEGA_LINK_REGEX = /https?:\/\/(?:www\.)?mega\.(?:nz|co\.nz)\/[^\s)>]+/gi;
 const URL_REGEX = /https?:\/\/[^\s)>]+/gi;
@@ -8,23 +9,6 @@ const STATUS_LINE_REGEX = /^\s*Stat(?:us|s)(?:\s*\([^)]*\))?\s*:\s*(.+)$/i;
 const MISSING_LINE_REGEX = /^\s*Missing(?:\s*\([^)]*\))?\s*:/i;
 const STATUS_UPDATE_REGEX = /-\s*(?:Last\s+)?Updat\w*\s*:?\s*(.+)$/i;
 const TRAILING_DATE_REGEX = /-\s*(\d{1,2}\/\d{1,2}\/\d{2,4})\s*$/;
-
-type Message = {
-	content?: unknown;
-};
-
-type InputPayload = {
-	messages?: unknown;
-};
-
-type Group = {
-	circle: string;
-	links: string[];
-	missingLink: string | null;
-	status: string | null;
-	statusMeta: string | null;
-	lastUpdated: string | null;
-};
 
 type MutableGroup = {
 	links: Set<string>;
@@ -206,7 +190,7 @@ export async function transform(inputArg?: string, outputArg?: string): Promise<
 	}
 
 	const groups = collectGroups(inputJson.messages as Message[]);
-	const outputJson = { groups };
+	const outputJson: TransformedPayload = { groups };
 
 	await fs.writeFile(outputPath, `${JSON.stringify(outputJson, null, 2)}\n`);
 

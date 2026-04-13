@@ -1,5 +1,5 @@
 import { useDebouncer } from "@tanstack/react-pacer";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { LucideCopy, LucideSearch } from "lucide-react";
 import { type ChangeEvent, type SubmitEvent, Suspense, useState } from "react";
@@ -17,7 +17,11 @@ import {
 	SelectValue,
 } from "@/components/select";
 import { StatusIndicator } from "@/components/status-indicator";
-import { circlesQueryOptions, type FetchCirclesShape, fetchCirclesInput } from "@/queries/circle";
+import {
+	circlesInfiniteQueryOptions,
+	type FetchCirclesShape,
+	fetchCirclesInput,
+} from "@/queries/circle";
 import type { SearchType } from "@/types/circle";
 import { SEARCH_TYPE_ITEMS } from "@/utils/grammar";
 
@@ -25,16 +29,11 @@ export const Route = createFileRoute("/")({
 	validateSearch: fetchCirclesInput,
 	loaderDeps: ({ search }) => ({
 		search: search.search,
-		cursor: search.cursor,
 		searchType: search.searchType,
 	}),
 	loader: async ({ context, deps }) => {
-		return context.queryClient.ensureQueryData(
-			circlesQueryOptions({
-				search: deps.search,
-				cursor: deps.cursor,
-				searchType: deps.searchType,
-			}),
+		return context.queryClient.ensureInfiniteQueryData(
+			circlesInfiniteQueryOptions({ search: deps.search, searchType: deps.searchType }),
 		);
 	},
 	beforeLoad: async () => {
@@ -90,7 +89,7 @@ function Form() {
 
 		router.navigate({
 			to: "/",
-			search: { search: value, searchType: typeValue },
+			search: { search: value, searchType: typeValue, cursor: undefined },
 		});
 	};
 
@@ -134,17 +133,20 @@ function Form() {
 }
 
 function Results() {
-	const { search, cursor, searchType } = Route.useSearch({
-		select: ({ search, cursor, searchType }) => ({ search, cursor, searchType }),
+	const { search, searchType } = Route.useSearch({
+		select: ({ search, searchType }) => ({ search, searchType }),
 	});
-	const {
-		data: { circles, total },
-	} = useSuspenseQuery(circlesQueryOptions({ search, cursor, searchType }));
+	const { data, hasNextPage, fetchNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(
+		circlesInfiniteQueryOptions({ search, searchType }),
+	);
+
+	const circles = data.pages.flatMap((page) => page.circles);
+	const total = data.pages[0]?.total ?? { circles: 0, releases: 0 };
 
 	return (
 		<section className="flex flex-col gap-2 mt-2">
 			<span className="text-sm">
-				Matching: {total.circles} circles, {total.releases} releases
+				Showing only {total.circles} circles, {total.releases} releases
 			</span>
 
 			<ul>
@@ -162,6 +164,22 @@ function Results() {
 					/>
 				))}
 			</ul>
+
+			<section className="flex justify-center py-4">
+				{hasNextPage ? (
+					<Button
+						type="button"
+						variant="outline"
+						size="lg"
+						onClick={() => fetchNextPage()}
+						disabled={isFetchingNextPage}
+					>
+						{isFetchingNextPage ? "Loading..." : "Load next"}
+					</Button>
+				) : (
+					<span className="text-sm text-muted-foreground">No more results</span>
+				)}
+			</section>
 		</section>
 	);
 }

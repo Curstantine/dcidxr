@@ -1,11 +1,12 @@
-import { keepPreviousData, queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import z from "zod";
 
 import { db } from "@/db";
 
+const PAGE_SIZE = 100;
+
 export const fetchCirclesInput = z.object({
-	limit: z.number().optional().default(1000),
 	search: z.string().optional(),
 	cursor: z.number().optional(),
 	searchType: z.enum(["circle", "release"]).optional().default("circle"),
@@ -16,20 +17,16 @@ export const fetchCirclesInput = z.object({
 // the query will not return any results.
 export const fetchCircles = createServerFn({ method: "GET" })
 	.inputValidator(fetchCirclesInput)
-	.handler(async ({ data: { limit, search, cursor, searchType } }) => {
+	.handler(async ({ data: { search, cursor, searchType } }) => {
+		const searchValue = search ? `%${search}%` : undefined;
+
 		const query = await db.query.circle.findMany({
-			limit,
+			limit: PAGE_SIZE,
 			where: {
 				id: { gt: cursor },
-				name:
-					searchType === "circle"
-						? { ilike: search ? `%${search}%` : undefined }
-						: undefined,
+				name: searchType === "circle" ? { ilike: searchValue } : undefined,
 				releases: {
-					name:
-						searchType === "release"
-							? { ilike: search ? `%${search}%` : undefined }
-							: undefined,
+					name: searchType === "release" ? { ilike: searchValue } : undefined,
 				},
 			},
 			with: {
@@ -56,14 +53,16 @@ export const fetchCircles = createServerFn({ method: "GET" })
 
 export type FetchCirclesShape = Awaited<ReturnType<typeof fetchCircles>>;
 
-export const circlesQueryOptions = ({
+export const circlesInfiniteQueryOptions = ({
 	search,
-	limit,
-	cursor,
 	searchType,
 }: z.input<typeof fetchCirclesInput>) =>
-	queryOptions({
-		queryKey: ["circles", search, limit, cursor, searchType],
-		placeholderData: keepPreviousData,
-		queryFn: () => fetchCircles({ data: { search, limit, cursor, searchType } }),
+	infiniteQueryOptions({
+		queryKey: ["circles", search, searchType],
+		initialPageParam: undefined as number | undefined,
+		queryFn: ({ pageParam }) =>
+			fetchCircles({ data: { search, searchType, cursor: pageParam } }),
+		getNextPageParam: (lastPage) => {
+			return lastPage.circles.length < PAGE_SIZE ? undefined : lastPage.circles.at(-1)?.id;
+		},
 	});
