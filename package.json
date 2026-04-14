@@ -1,15 +1,19 @@
 {
-    "name": "dcidxr",
-    "license": "MIT",
-    "author": "Curstantine",
-    "scripts": {
-        "format": "pnpm run -r format",
-        "lint": "pnpm run -r lint",
-        "check": "pnpm run -r check"
-    },
-    "devDependencies": {
-        "@biomejs/biome": "2.4.11",
-        "@types/node": "^24.12.2"
-    },
-    "packageManager": "pnpm@10.33.0"
+	"name": "dcidxr",
+	"license": "MIT",
+	"author": "Curstantine",
+	"scripts": {
+		"build:crawler": "pnpm run --filter crawler build",
+		"build:web": "pnpm run --filter web build",
+		"start:crawler": "pnpm run --filter crawler start",
+		"start:web": "pnpm run --filter web preview",
+		"format": "pnpm run -r format",
+		"lint": "pnpm run -r lint",
+		"check": "pnpm run -r check"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.4.11",
+		"@types/node": "^24.12.2"
+	},
+	"packageManager": "pnpm@10.33.0"
 }

@@ -2,7 +2,7 @@
 	"name": "crawler",
 	"type": "module",
 	"scripts": {
-		"build:deps": "pnpm run --filter megajs build",
+		"build": "pnpm run --filter megajs build",
 		"start": "node --experimental-strip-types ./src/index.ts start",
 		"transform": "node --experimental-strip-types ./src/index.ts transform",
 		"fetch": "node --experimental-strip-types ./src/index.ts fetch",
