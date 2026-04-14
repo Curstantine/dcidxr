@@ -1,4 +1,5 @@
 import { fetchReleases } from "./fetch.ts";
+import { start } from "./start.ts";
 import { sync } from "./sync.ts";
 import { transform } from "./transform.ts";
 
@@ -9,9 +10,7 @@ async function main(): Promise<void> {
 
 	switch (command) {
 		case "start":
-			await transform();
-			await fetchReleases();
-			await sync();
+			await start();
 			break;
 		case "transform":
 			await transform(inputArg, outputArg);

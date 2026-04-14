@@ -2,12 +2,11 @@ import { config } from "dotenv";
 import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 
-import { assertFileExists, readJsonFile, resolveInputPath } from "./utils/files.ts";
-import type { DbCircleStatus, FetchGroup, SyncInputPayload } from "./utils/types.ts";
-import { dedupeByKey, mapWithConcurrency, normalizeString } from "./utils/index.ts";
-
 import { relations } from "../../web/src/db/relations.ts";
 import { circle, release, serverMeta } from "../../web/src/db/schema.ts";
+import { assertFileExists, readJsonFile, resolveInputPath } from "./utils/files.ts";
+import { dedupeByKey, mapWithConcurrency, normalizeString } from "./utils/index.ts";
+import type { DbCircleStatus, FetchGroup, SyncInputPayload } from "./utils/types.ts";
 
 config({ path: [".env.local", ".env"] });
 

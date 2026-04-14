@@ -9,6 +9,7 @@ import {
 	resolveOutputPath,
 	writeJsonFile,
 } from "./utils/files.ts";
+import { dedupeByKey, mapWithConcurrency, normalizeNodeName } from "./utils/index.ts";
 import type {
 	FetchGroup,
 	FetchInputPayload,
@@ -16,7 +17,6 @@ import type {
 	Release,
 	ReleaseFile,
 } from "./utils/types.ts";
-import { dedupeByKey, mapWithConcurrency, normalizeNodeName } from "./utils/index.ts";
 
 type MegaNode = {
 	name: string | null;
