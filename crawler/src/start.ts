@@ -1,88 +1,37 @@
-import type { Dirent } from "node:fs";
-import { mkdir, readdir, unlink } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+
+import { config } from "dotenv";
 
 import { fetchReleases } from "./fetch.ts";
 import { sync } from "./sync.ts";
 import { transform } from "./transform.ts";
 
-const DATA_ROOT = process.env.RAILWAY_VOLUME_MOUNT_PATH?.trim() || "/data";
-const MESSAGE_INPUT_DIR = path.join(DATA_ROOT, "messages");
-const TRANSFORMED_OUTPUT_DIR = path.join(DATA_ROOT, "transformed");
-const RELEASES_OUTPUT_DIR = path.join(DATA_ROOT, "releases");
+config({ path: [".env.local", ".env"] });
 
-type TimestampedFile = {
-	path: string;
-	timestamp: bigint;
-};
+const DIST_DIR = path.resolve(process.cwd(), "dist");
+const INPUT_PATH = path.join(DIST_DIR, "input.json");
 
-function parseTimestampFromFileName(fileName: string): bigint | null {
-	const parsed = path.parse(fileName);
-	if (!/^\d+$/.test(parsed.name)) return null;
+async function download(): Promise<void> {
+	const source = process.env.MESSAGES_DL_URL;
+	if (!source) throw new Error("MESSAGES_DL_URL is not set");
 
-	try {
-		return BigInt(parsed.name);
-	} catch {
-		return null;
-	}
-}
+	await mkdir(DIST_DIR, { recursive: true });
 
-async function findTimestampedMessageFiles(): Promise<TimestampedFile[]> {
-	let entries: Dirent<string>[];
+	const res = await fetch(source);
+	if (!res.ok) throw new Error(`Failed to download messages: ${res.status} ${res.statusText}`);
 
-	try {
-		entries = await readdir(MESSAGE_INPUT_DIR, {
-			withFileTypes: true,
-			encoding: "utf8",
-		});
-	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : String(error);
-		throw new Error(`Failed to read message input directory ${MESSAGE_INPUT_DIR}: ${message}`);
-	}
+	const rawJson = await res.text();
+	await writeFile(INPUT_PATH, rawJson, "utf8");
 
-	const candidates = entries
-		.filter((entry) => entry.isFile())
-		.map((entry) => {
-			const timestamp = parseTimestampFromFileName(entry.name);
-			if (timestamp === null) return null;
-
-			return {
-				path: path.join(MESSAGE_INPUT_DIR, entry.name),
-				timestamp,
-			} satisfies TimestampedFile;
-		})
-		.filter((entry): entry is TimestampedFile => entry !== null);
-
-	if (candidates.length === 0) {
-		throw new Error(`No timestamped message input files were found in ${MESSAGE_INPUT_DIR}`);
-	}
-
-	candidates.sort((a, b) => {
-		if (a.timestamp === b.timestamp) {
-			return a.path.localeCompare(b.path);
-		}
-
-		return a.timestamp > b.timestamp ? -1 : 1;
-	});
-
-	return candidates;
+	console.log(`Downloaded messages to ${INPUT_PATH}`);
 }
 
 export async function start(): Promise<void> {
-	const messageInputs = await findTimestampedMessageFiles();
-	const latestInput = messageInputs[0];
-	const timestamp = latestInput.timestamp.toString();
+	await download();
+	await transform();
+	await fetchReleases();
+	await sync();
 
-	await mkdir(TRANSFORMED_OUTPUT_DIR, { recursive: true });
-	await mkdir(RELEASES_OUTPUT_DIR, { recursive: true });
-
-	const transformedOutputPath = path.join(TRANSFORMED_OUTPUT_DIR, `${timestamp}.json`);
-	const releasesOutputPath = path.join(RELEASES_OUTPUT_DIR, `${timestamp}.json`);
-
-	console.log(`Using latest message input: ${latestInput.path}`);
-
-	await transform(latestInput.path, transformedOutputPath);
-	await fetchReleases(transformedOutputPath, releasesOutputPath);
-	await sync(releasesOutputPath);
-	await Promise.all(messageInputs.map((x) => unlink(x.path)));
+	await rm(INPUT_PATH, { force: true });
 }
