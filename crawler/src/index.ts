@@ -8,6 +8,11 @@ async function main(): Promise<void> {
 	const [command, inputArg, outputArg] = normalizedArgs;
 
 	switch (command) {
+		case "start":
+			await transform();
+			await fetchReleases();
+			await sync();
+			break;
 		case "transform":
 			await transform(inputArg, outputArg);
 			break;
@@ -31,6 +36,7 @@ async function main(): Promise<void> {
 
 function printUsage(): void {
 	console.error("Usage:");
+	console.error("  node src/index.ts start");
 	console.error("  node src/index.ts transform [inputPath] [outputPath]");
 	console.error("  node src/index.ts fetch [inputPath] [outputPath]");
 	console.error("  node src/index.ts sync [inputPath]");

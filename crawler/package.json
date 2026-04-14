@@ -2,6 +2,8 @@
 	"name": "crawler",
 	"type": "module",
 	"scripts": {
+		"build:deps": "pnpm run --filter megajs build",
+		"start": "node --experimental-strip-types ./src/index.ts start",
 		"transform": "node --experimental-strip-types ./src/index.ts transform",
 		"fetch": "node --experimental-strip-types ./src/index.ts fetch",
 		"sync": "node --experimental-strip-types ./src/index.ts sync",
@@ -13,11 +15,11 @@
 		"@biomejs/biome": "2.4.11",
 		"@types/node": "24"
 	},
-	"packageManager": "pnpm@10.33.0",
 	"dependencies": {
 		"dotenv": "^17.4.1",
 		"drizzle-orm": "1.0.0-beta.21",
 		"megajs": "workspace:",
 		"pg": "^8.20.0"
-	}
+	},
+	"packageManager": "pnpm@10.33.0"
 }
