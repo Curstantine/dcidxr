@@ -15,8 +15,14 @@ export const relations = defineRelations(schema, (r) => ({
 	},
 	release: {
 		circle: r.one.circle({ from: r.release.circleId, to: r.circle.id }),
+		tracks: r.many.track(),
+	},
+	track: {
+		circle: r.one.circle({ from: r.track.circleId, to: r.circle.id }),
+		release: r.one.release({ from: r.track.releaseId, to: r.release.id }),
 	},
 	circle: {
 		releases: r.many.release(),
+		tracks: r.many.track(),
 	},
 }));
