@@ -231,7 +231,16 @@ function CircleLine({
 
 				<div className="flex-1" />
 				{missingLink && (
-					<Button type="button" size="sm" variant="link">
+					<Button
+						type="button"
+						size="sm"
+						variant="link"
+						nativeButton={false}
+						render={
+							// biome-ignore lint/a11y/useAnchorContent: children is passed by the Button
+							<a href={missingLink} target="_blank" rel="noopener noreferrer" />
+						}
+					>
 						Missing
 					</Button>
 				)}
