@@ -2,12 +2,12 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
 
+import { Toaster } from "@/components/sonner";
+import TanstackPacerDevtools from "@/integrations/pacer/devtools";
 import TanStackQueryDevtools from "@/integrations/query/devtools";
 import TanStackRouterDevtools from "@/integrations/router/devtools";
-import TanstackPacerDevtools from "@/integrations/pacer/devtools";
 
 import appCss from "../styles.css?url";
-import { Toaster } from "@/components/sonner";
 
 interface MyRouterContext {
 	queryClient: QueryClient;

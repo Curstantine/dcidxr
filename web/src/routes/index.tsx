@@ -1,7 +1,7 @@
 import { useDebouncer } from "@tanstack/react-pacer";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
-import { LucideCopy, LucideGitBranch, LucideSearch } from "lucide-react";
+import { LucideCopy, LucideSearch } from "lucide-react";
 import { type ChangeEvent, type SubmitEvent, Suspense, useState } from "react";
 import { toast } from "sonner";
 
@@ -17,6 +17,8 @@ import {
 	SelectValue,
 } from "@/components/select";
 import { StatusIndicator } from "@/components/status-indicator";
+import { env } from "@/env";
+import { serverMetaQueryOptions } from "@/queries/ meta";
 import {
 	circlesInfiniteQueryOptions,
 	type FetchCirclesShape,
@@ -24,8 +26,6 @@ import {
 } from "@/queries/circle";
 import type { SearchType } from "@/types/circle";
 import { getServerMetaLabel, SEARCH_TYPE_ITEMS } from "@/utils/grammar";
-import { env } from "@/env";
-import { serverMetaQueryOptions } from "@/queries/ meta";
 
 export const Route = createFileRoute("/")({
 	validateSearch: fetchCirclesInput,
@@ -129,7 +129,7 @@ function Form() {
 				name="searchType"
 				items={SEARCH_TYPE_ITEMS}
 				value={typeValue}
-				onValueChange={(value) => setTypeValue(value ?? "circle")}
+				onValueChange={(value) => setTypeValue(value ?? "all")}
 			>
 				<SelectTrigger className="w-28">
 					<SelectValue placeholder="Query" />

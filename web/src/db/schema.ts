@@ -1,8 +1,13 @@
 import { sql } from "drizzle-orm";
-import { index, integer, pgEnum, pgTable, serial, text } from "drizzle-orm/pg-core";
+import { customType, index, integer, pgEnum, pgTable, serial, text } from "drizzle-orm/pg-core";
 
 export const circleStatusEnum = pgEnum("circle_status", ["missing", "incomplete", "complete"]);
 export const serverMetaKeyEnum = pgEnum("server_meta_key", ["last_crawled", "last_indexed"]);
+const tsvector = customType<{ data: string }>({
+	dataType() {
+		return "tsvector";
+	},
+});
 
 export const circle = pgTable(
 	"circle",
@@ -13,8 +18,12 @@ export const circle = pgTable(
 		status: circleStatusEnum("status").notNull().default("incomplete"),
 		statusText: text("status_text").notNull().default("Missing releases"),
 		missingLink: text("missing_link"),
+		searchVector: tsvector("search_vector").notNull().default(sql`''::tsvector`),
 	},
-	(table) => [index("circles_name_idx").on(table.name)],
+	(table) => [
+		index("circles_name_idx").on(table.name),
+		index("circles_search_vector_idx").using("gin", table.searchVector),
+	],
 );
 
 export const release = pgTable(

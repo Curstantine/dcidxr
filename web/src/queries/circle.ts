@@ -1,5 +1,7 @@
+import { takeIf, takeMapped } from "@jabascript/core";
 import { infiniteQueryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { sql } from "drizzle-orm";
 import z from "zod";
 
 import { db } from "@/db";
@@ -7,9 +9,9 @@ import { db } from "@/db";
 const PAGE_SIZE = 100;
 
 export const fetchCirclesInput = z.object({
-	search: z.string().optional(),
+	search: z.string().trim().optional(),
 	cursor: z.number().optional(),
-	searchType: z.enum(["circle", "release"]).optional().default("circle"),
+	searchType: z.enum(["all", "circle", "release"]).optional().default("circle"),
 });
 
 // TODO: Once the prepared statement bug is fixed, migrate this to use prepared statements.
@@ -18,26 +20,56 @@ export const fetchCirclesInput = z.object({
 export const fetchCircles = createServerFn({ method: "GET" })
 	.inputValidator(fetchCirclesInput)
 	.handler(async ({ data: { search, cursor, searchType } }) => {
-		const searchValue = search ? `%${search}%` : undefined;
+		const sv = takeIf(search, (x) => x !== undefined && x !== "") ?? undefined;
+		const svs = takeMapped(sv, (x) => `%${x}%`) ?? undefined;
+
+		let clause: Parameters<typeof db.query.circle.findMany>["0"];
+
+		switch (searchType) {
+			case "circle":
+				clause = {
+					where: { name: { ilike: svs } },
+				};
+				break;
+			case "release":
+				clause = {
+					where: { releases: { name: { ilike: svs } } },
+					with: { releases: { where: { name: { ilike: svs } } } },
+				};
+				break;
+			case "all": {
+				if (sv === undefined) clause = {};
+				else
+					clause = {
+						where: {
+							RAW: (t) =>
+								sql`${t.searchVector} @@ websearch_to_tsquery('simple', ${sv})`,
+						},
+					};
+
+				break;
+			}
+		}
 
 		const query = await db.query.circle.findMany({
 			limit: PAGE_SIZE,
+			columns: {
+				id: true,
+				name: true,
+				status: true,
+				statusText: true,
+				missingLink: true,
+				megaLinks: true,
+			},
 			where: {
+				...clause.where,
 				id: { gt: cursor },
-				name: searchType === "circle" ? { ilike: searchValue } : undefined,
-				releases: {
-					name: searchType === "release" ? { ilike: searchValue } : undefined,
-				},
 			},
 			with: {
 				releases: {
 					columns: { id: true, name: true, sizeMb: true, megaLink: true },
-					where: {
-						name:
-							searchType === "release"
-								? { ilike: search ? `%${search}%` : undefined }
-								: undefined,
-					},
+					// biome-ignore lint/complexity/noBannedTypes: I don't know...
+					...(clause.with?.releases ?? ({} as unknown as {})),
 				},
 			},
 		});

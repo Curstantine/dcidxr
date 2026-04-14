@@ -2,6 +2,7 @@ import type { CircleStatus, SearchType } from "@/types/circle";
 import type { ServerMetaKey } from "@/types/meta";
 
 export const SEARCH_TYPE_ITEMS: readonly { value: SearchType; label: string }[] = [
+	{ value: "all", label: "All" },
 	{ value: "circle", label: "Circles" },
 	{ value: "release", label: "Releases" },
 ];

@@ -106,6 +106,9 @@ importers:
       '@fontsource-variable/inter':
         specifier: ^5.2.8
         version: 5.2.8
+      '@jabascript/core':
+        specifier: ^0.5.0
+        version: 0.5.0
       '@t3-oss/env-core':
         specifier: ^0.13.11
         version: 0.13.11(typescript@5.9.3)(zod@4.3.6)
@@ -1146,6 +1149,9 @@ packages:
   '@isaacs/fs-minipass@4.0.1':
     resolution: {integrity: sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==}
     engines: {node: '>=18.0.0'}
+
+  '@jabascript/core@0.5.0':
+    resolution: {integrity: sha512-SZsXNrtcC/2SpJAvp/p1mLZ3QgdnxxfiMLYS78rh1Jroz+PN30utDZia0nzACpdM3x292j2eiZwgCtKHFwtW/A==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -6802,6 +6808,8 @@ snapshots:
   '@isaacs/fs-minipass@4.0.1':
     dependencies:
       minipass: 7.1.3
+
+  '@jabascript/core@0.5.0': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
