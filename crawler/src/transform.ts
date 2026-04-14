@@ -1,10 +1,4 @@
-import {
-	assertFileExists,
-	readJsonFile,
-	resolveInputPath,
-	resolveOutputPath,
-	writeJsonFile,
-} from "./utils/files.ts";
+import { readJsonFile, resolveInputPath, resolveOutputPath, writeJsonFile } from "./utils/files.ts";
 import type {
 	GroupBase,
 	Message,
@@ -171,9 +165,6 @@ function collectGroups(messages: Message[]): GroupBase[] {
 export async function transform(inputArg?: string, outputArg?: string): Promise<void> {
 	const inputPath = resolveInputPath(inputArg, "dist/input.json");
 	const outputPath = resolveOutputPath(outputArg, "dist/transformed.json");
-
-	await assertFileExists(inputPath);
-
 	const inputJson = await readJsonFile<TransformInputPayload>(inputPath);
 
 	if (!Array.isArray(inputJson.messages)) {

@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 
 import { relations } from "../../web/src/db/relations.ts";
 import { circle, release, serverMeta } from "../../web/src/db/schema.ts";
-import { assertFileExists, readJsonFile, resolveInputPath } from "./utils/files.ts";
+import { readJsonFile, resolveInputPath } from "./utils/files.ts";
 import { dedupeByKey, mapWithConcurrency, normalizeString } from "./utils/index.ts";
 import type { DbCircleStatus, FetchGroup, SyncInputPayload } from "./utils/types.ts";
 
@@ -93,9 +93,6 @@ function normalizeGroup(group: FetchGroup): FetchGroup {
 
 export async function sync(inputArg?: string): Promise<void> {
 	const inputPath = resolveInputPath(inputArg, "dist/releases.json");
-
-	await assertFileExists(inputPath);
-
 	const inputJson = await readJsonFile<SyncInputPayload>(inputPath);
 
 	if (!Array.isArray(inputJson.groups)) {
@@ -104,8 +101,8 @@ export async function sync(inputArg?: string): Promise<void> {
 
 	const groups = inputJson.groups.map(normalizeGroup);
 	const circleNames = dedupeByKey(
-		groups.map((group) => group.circle),
-		(name) => name,
+		groups.map((x) => x.circle),
+		(y) => y,
 	);
 
 	if (circleNames.length === 0) {
@@ -114,10 +111,7 @@ export async function sync(inputArg?: string): Promise<void> {
 	}
 
 	const existingCircles = await db
-		.select({
-			id: circle.id,
-			name: circle.name,
-		})
+		.select({ id: circle.id, name: circle.name })
 		.from(circle)
 		.where(inArray(circle.name, circleNames));
 
@@ -145,7 +139,6 @@ export async function sync(inputArg?: string): Promise<void> {
 					status: "incomplete" as const,
 					statusText: "Incomplete",
 					missingLink: null,
-					lastUpdated: null,
 				})),
 			)
 			.returning({
@@ -153,9 +146,9 @@ export async function sync(inputArg?: string): Promise<void> {
 				name: circle.name,
 			});
 
-		for (const insertedCircle of insertedCircles) {
-			circleIdsByName.set(insertedCircle.name, insertedCircle.id);
-		}
+		insertedCircles.forEach((x) => {
+			circleIdsByName.set(x.name, x.id);
+		});
 	}
 
 	let startedCircles = 0;

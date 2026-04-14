@@ -2,13 +2,7 @@ import path from "node:path";
 
 import { File as MegaFile } from "megajs";
 
-import {
-	assertFileExists,
-	readJsonFile,
-	resolveInputPath,
-	resolveOutputPath,
-	writeJsonFile,
-} from "./utils/files.ts";
+import { readJsonFile, resolveInputPath, resolveOutputPath, writeJsonFile } from "./utils/files.ts";
 import { dedupeByKey, mapWithConcurrency, normalizeNodeName } from "./utils/index.ts";
 import type {
 	FetchGroup,
@@ -129,9 +123,6 @@ function dedupeReleases(releases: Release[]): Release[] {
 export async function fetchReleases(inputArg?: string, outputArg?: string): Promise<void> {
 	const inputPath = resolveInputPath(inputArg, "dist/transformed.json");
 	const outputPath = resolveOutputPath(outputArg, "dist/releases.json");
-
-	await assertFileExists(inputPath);
-
 	const inputJson = await readJsonFile<FetchInputPayload>(inputPath);
 
 	if (!Array.isArray(inputJson.groups)) {

@@ -15,14 +15,6 @@ export function resolveOutputPath(
 	return path.resolve(process.cwd(), outputArg ?? defaultRelativePath);
 }
 
-export async function assertFileExists(filePath: string): Promise<void> {
-	try {
-		await fs.access(filePath);
-	} catch {
-		throw new Error(`Input file not found: ${filePath}`);
-	}
-}
-
 export function parseJson<T>(raw: string, filePath: string): T {
 	try {
 		return JSON.parse(raw) as T;
