@@ -11,7 +11,7 @@ const PAGE_SIZE = 100;
 export const fetchCirclesInput = z.object({
 	search: z.string().trim().optional(),
 	cursor: z.number().optional(),
-	searchType: z.enum(["all", "circle", "release"]).optional().default("circle"),
+	searchType: z.enum(["all", "circle", "release"]).optional().default("all"),
 });
 
 // TODO: Once the prepared statement bug is fixed, migrate this to use prepared statements.
