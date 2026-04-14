@@ -1,4 +1,3 @@
-import { config } from "dotenv";
 import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 
@@ -8,7 +7,7 @@ import { assertFileExists, readJsonFile, resolveInputPath } from "./utils/files.
 import { dedupeByKey, mapWithConcurrency, normalizeString } from "./utils/index.ts";
 import type { DbCircleStatus, FetchGroup, SyncInputPayload } from "./utils/types.ts";
 
-config({ path: [".env.local", ".env"] });
+import "./utils/prelude.ts";
 
 if (!process.env.DATABASE_URL) {
 	throw new Error("[drizzle]: DATABASE_URL is not set");

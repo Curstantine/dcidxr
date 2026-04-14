@@ -1,13 +1,11 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { config } from "dotenv";
-
 import { fetchReleases } from "./fetch.ts";
 import { sync } from "./sync.ts";
 import { transform } from "./transform.ts";
 
-config({ path: [".env.local", ".env"] });
+import "./utils/prelude.ts";
 
 const DIST_DIR = path.resolve(process.cwd(), "dist");
 const INPUT_PATH = path.join(DIST_DIR, "input.json");

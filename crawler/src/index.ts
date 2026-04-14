@@ -3,6 +3,8 @@ import { start } from "./start.ts";
 import { sync } from "./sync.ts";
 import { transform } from "./transform.ts";
 
+import "./utils/prelude.ts";
+
 async function main(): Promise<void> {
 	const args = process.argv.slice(2);
 	const normalizedArgs = args[1] === "--" ? [args[0], ...args.slice(2)] : args;
