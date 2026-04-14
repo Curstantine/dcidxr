@@ -6,7 +6,7 @@
 		"build:crawler": "pnpm run --filter crawler build",
 		"build:web": "pnpm run --filter web build",
 		"start:crawler": "pnpm run --filter crawler start",
-		"start:web": "pnpm run --filter web preview",
+		"start:web": "pnpm run --filter web start",
 		"format": "pnpm run -r format",
 		"lint": "pnpm run -r lint",
 		"check": "pnpm run -r check"
