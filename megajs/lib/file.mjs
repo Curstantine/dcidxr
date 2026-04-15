@@ -52,21 +52,59 @@ class File extends EventEmitter {
 
 		if (!aes || !opt.k) return;
 
-		const parts = opt.k.split(":");
-		this.key = formatKey(parts[parts.length - 1]);
+		const encryptedKeys = opt.k
+			.split("/")
+			.map((pair) => pair.split(":").pop())
+			.filter((value) => value)
+			.map((value) => formatKey(value));
 
-		if (this.key.length <= 32) {
-			// Regular AES-ECB encrypted key
-			aes.decryptECB(this.key);
-		} else if (this.storage) {
-			// RSA encrypted key
-			this.key = this.storage.decryptRsaKey(this.key).slice(0, this.directory ? 16 : 32);
-		} else {
-			// Can't decrypt a RSA key without a storage
-			this.key = null;
+		let fallbackKey = null;
+		let attributes;
+
+		for (const encryptedKey of encryptedKeys) {
+			let decryptedKey = Buffer.from(encryptedKey);
+
+			try {
+				if (decryptedKey.length <= 32) {
+					// Regular AES-ECB encrypted key
+					aes.decryptECB(decryptedKey);
+				} else if (this.storage) {
+					// RSA encrypted key
+					decryptedKey = this.storage
+						.decryptRsaKey(decryptedKey)
+						.slice(0, this.directory ? 16 : 32);
+				} else {
+					// Can't decrypt a RSA key without a storage
+					continue;
+				}
+			} catch {
+				continue;
+			}
+
+			if (!fallbackKey) fallbackKey = decryptedKey;
+
+			if (!opt.a) {
+				this.key = decryptedKey;
+				break;
+			}
+
+			const at = d64(opt.a);
+			getCipher(decryptedKey).decryptCBC(at);
+			const unpackedAttributes = File.unpackAttributes(at);
+			if (unpackedAttributes) {
+				this.key = decryptedKey;
+				attributes = unpackedAttributes;
+				break;
+			}
 		}
 
-		if (opt.a) {
+		if (!this.key) {
+			this.key = fallbackKey;
+		}
+
+		if (attributes) {
+			this.parseAttributes(attributes);
+		} else if (opt.a) {
 			this.decryptAttributes(opt.a);
 		}
 	}

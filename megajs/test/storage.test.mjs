@@ -5,6 +5,7 @@ import { Readable } from "stream";
 import test from "ava";
 
 import { File, Storage } from "../dist/main.node-es.mjs";
+import { AES, e64, getCipher } from "../lib/crypto/index.mjs";
 import { sha1, testBuffer } from "./helpers/test-utils.mjs";
 
 // Set up Storage to use test server and credentials
@@ -206,6 +207,42 @@ test.serial("Should share files", (t) => {
 			resolve();
 		});
 	});
+});
+
+test.serial("Should load metadata with non-last key slot", (t) => {
+	const masterKey = Buffer.from("00112233445566778899aabbccddeeff", "hex");
+	const goodNodeKey = Buffer.from("102132435465768798a9bacbdcedfe0f", "hex");
+	const badNodeKey = Buffer.from("f0e1d2c3b4a5968778695a4b3c2d1e0f", "hex");
+
+	const encryptWithMasterKey = (key) => {
+		const encryptedKey = Buffer.from(key);
+		new AES(masterKey).encryptECB(encryptedKey);
+		return encryptedKey;
+	};
+
+	const packedAttributes = Buffer.alloc(32);
+	Buffer.from('MEGA{"n":"folder root"}').copy(packedAttributes);
+	getCipher(goodNodeKey).encryptCBC(packedAttributes);
+
+	const file = new File({
+		downloadId: "AAAAAAAB",
+		key: e64(masterKey),
+		directory: true,
+	});
+
+	file.loadMetadata(new AES(masterKey), {
+		t: 1,
+		a: e64(packedAttributes),
+		k:
+			"node:" +
+			e64(encryptWithMasterKey(goodNodeKey)) +
+			"/share:" +
+			e64(encryptWithMasterKey(badNodeKey)),
+	});
+
+	t.is(file.name, "folder root");
+	t.deepEqual(file.attributes, { n: "folder root" });
+	t.is(file.key.toString("hex"), goodNodeKey.toString("hex"));
 });
 
 test.serial("Should download shared files (old format)", (t) => {
