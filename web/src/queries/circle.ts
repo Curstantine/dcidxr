@@ -72,6 +72,7 @@ export const fetchCircles = createServerFn({ method: "GET" })
 					...(clause.with?.releases ?? ({} as unknown as {})),
 				},
 			},
+			orderBy: { id: "asc" },
 		});
 
 		return {
