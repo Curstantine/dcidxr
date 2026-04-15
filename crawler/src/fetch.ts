@@ -47,6 +47,70 @@ const AUDIO_FILE_EXTENSIONS = new Set([
 ]);
 
 const DEFAULT_CONCURRENCY = 4;
+const MEGA_LOAD_MAX_ATTEMPTS = 3;
+const MEGA_LOAD_RETRY_BASE_DELAY_MS = 750;
+const MEGA_LOAD_RETRY_MAX_DELAY_MS = 5000;
+const RETRYABLE_MEGA_ERROR_CODES = new Set([
+	"ECONNABORTED",
+	"ECONNRESET",
+	"ENETDOWN",
+	"ENETRESET",
+	"ENETUNREACH",
+	"EAI_AGAIN",
+	"ETIMEDOUT",
+]);
+const RETRYABLE_MEGA_ERROR_MESSAGES = [
+	"fetch failed",
+	"network",
+	"socket",
+	"timeout",
+	"timed out",
+	"temporary failure",
+	"connection reset",
+];
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
+}
+
+function formatError(error: unknown): string {
+	if (error instanceof Error && error.message.trim().length > 0) {
+		return error.message;
+	}
+
+	return String(error);
+}
+
+function getErrorCode(error: unknown): string | null {
+	if (typeof error !== "object" || error === null) return null;
+
+	const value = (error as { code?: unknown }).code;
+	if (typeof value !== "string") return null;
+
+	const normalized = value.trim().toUpperCase();
+	return normalized.length > 0 ? normalized : null;
+}
+
+function isRetryableMegaLoadError(error: unknown): boolean {
+	const code = getErrorCode(error);
+	if (code && RETRYABLE_MEGA_ERROR_CODES.has(code)) {
+		return true;
+	}
+
+	const message = formatError(error).toLowerCase();
+	return RETRYABLE_MEGA_ERROR_MESSAGES.some((token) => message.includes(token));
+}
+
+function getRetryDelayMs(attempt: number): number {
+	const exponentialDelay = Math.min(
+		MEGA_LOAD_RETRY_MAX_DELAY_MS,
+		MEGA_LOAD_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1),
+	);
+	const jitter = Math.floor(Math.random() * 250);
+	return Math.min(MEGA_LOAD_RETRY_MAX_DELAY_MS, exponentialDelay + jitter);
+}
 
 function isAudioFileName(name: string): boolean {
 	const extension = path.extname(name).toLowerCase();
@@ -94,8 +158,37 @@ async function buildRelease(node: MegaFile, rootLink: string): Promise<Release> 
 }
 
 async function loadMegaFolder(link: string): Promise<MegaFile> {
-	const root = MegaFile.fromURL(link);
-	return root.loadAttributes();
+	let lastError: unknown = null;
+
+	for (let attempt = 1; attempt <= MEGA_LOAD_MAX_ATTEMPTS; attempt += 1) {
+		try {
+			const root = MegaFile.fromURL(link);
+			const loadedRoot = await root.loadAttributes();
+			return loadedRoot as MegaFile;
+		} catch (error: unknown) {
+			lastError = error;
+			const retryable = isRetryableMegaLoadError(error);
+			const hasRemainingAttempts = attempt < MEGA_LOAD_MAX_ATTEMPTS;
+
+			if (!retryable || !hasRemainingAttempts) {
+				const reason = formatError(error);
+				throw new Error(
+					`Failed to load MEGA folder after ${attempt} attempt${attempt === 1 ? "" : "s"} (${link}): ${reason}`,
+				);
+			}
+
+			const nextAttempt = attempt + 1;
+			const delayMs = getRetryDelayMs(attempt);
+			console.warn(
+				`[retry ${nextAttempt}/${MEGA_LOAD_MAX_ATTEMPTS}] Retrying MEGA load in ${delayMs}ms: ${link} (${formatError(error)})`,
+			);
+			await sleep(delayMs);
+		}
+	}
+
+	throw new Error(
+		`Failed to load MEGA folder after ${MEGA_LOAD_MAX_ATTEMPTS} attempts (${link}): ${formatError(lastError)}`,
+	);
 }
 
 async function fetchReleasesFromLink(link: string): Promise<Release[]> {
