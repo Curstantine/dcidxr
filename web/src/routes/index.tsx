@@ -18,7 +18,7 @@ import {
 } from "@/components/select";
 import { StatusIndicator } from "@/components/status-indicator";
 import { env } from "@/env";
-import { serverMetaQueryOptions } from "@/queries/ meta";
+import { serverMetaQueryOptions } from "@/queries/meta";
 import {
 	circlesInfiniteQueryOptions,
 	type FetchCirclesShape,
