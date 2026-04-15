@@ -67,6 +67,7 @@ const RETRYABLE_MEGA_ERROR_MESSAGES = [
 	"timed out",
 	"temporary failure",
 	"connection reset",
+	"invalid or expired user session",
 ];
 
 function sleep(ms: number): Promise<void> {
