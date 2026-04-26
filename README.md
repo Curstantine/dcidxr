@@ -7,11 +7,13 @@ A monorepo for indexing and browsing doujin music collections from MEGA.
 - **[web](./web)** - Web slop for browsing the indexed collection
 - **[crawler](./crawler)** - Data crawler and transformer for MEGA links
 - **megajs** - Internal MEGA.nz client library
+- **[mega](./mega)** - Go rewrite of the internal MEGA.nz client library
 
 ## Prerequisites
 
 - Node.js (see `.node-version` for required version)
 - pnpm (use corepack)
+- Go (via Nix dev shell or local install)
 - PostgreSQL database
 
 ## Getting Started

@@ -23,6 +23,8 @@
         buildInputs = with pkgs; [
           node
           corepack
+          go
+          gopls
         ];
 
         # Dependencies required at build-time.
