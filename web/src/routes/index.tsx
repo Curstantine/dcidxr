@@ -18,12 +18,12 @@ import {
 } from "@/components/select";
 import { StatusIndicator } from "@/components/status-indicator";
 import { env } from "@/env";
-import { serverMetaQueryOptions } from "@/queries/meta";
 import {
 	circlesInfiniteQueryOptions,
 	type FetchCirclesShape,
 	fetchCirclesInput,
 } from "@/queries/circle";
+import { serverMetaQueryOptions } from "@/queries/meta";
 import type { SearchType } from "@/types/circle";
 import { getServerMetaLabel, SEARCH_TYPE_ITEMS } from "@/utils/grammar";
 
@@ -36,7 +36,10 @@ export const Route = createFileRoute("/")({
 	loader: async ({ context, deps }) => {
 		context.queryClient.ensureQueryData(serverMetaQueryOptions);
 		return context.queryClient.ensureInfiniteQueryData(
-			circlesInfiniteQueryOptions({ search: deps.search, searchType: deps.searchType }),
+			circlesInfiniteQueryOptions({
+				search: deps.search,
+				searchType: deps.searchType,
+			}),
 		);
 	},
 	beforeLoad: async () => {

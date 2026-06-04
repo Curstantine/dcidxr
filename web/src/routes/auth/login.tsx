@@ -34,10 +34,15 @@ function RouteComponent() {
 			)}
 			<h1 className="text-2xl font-medium">Login</h1>
 			<span className="text-center mb-6 mt-1">
-				To use this service, you must sign in with Discord, and must have access to a
-				certain server and a channel...
+				To use this service, you must sign in with Discord, and must have access
+				to a certain server and a channel...
 			</span>
-			<Button type="button" size="lg" variant="discord" onClick={handleDiscordLogin}>
+			<Button
+				type="button"
+				size="lg"
+				variant="discord"
+				onClick={handleDiscordLogin}
+			>
 				<span aria-hidden className="iconify bxl--discord-alt size-6" />
 				Sign in with Discord
 			</Button>

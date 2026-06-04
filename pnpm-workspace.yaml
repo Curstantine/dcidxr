@@ -1,8 +1,13 @@
 packages:
-  - web
-  - crawler
-  - megajs
+    - web
+    - crawler
+    - megajs
 allowBuilds:
-  core-js: true
-  esbuild: true
-  lightningcss: true
+    core-js: true
+    esbuild: true
+    lightningcss: true
+    msw: true
+
+# Remove once https://github.com/better-auth/better-auth/pull/9554 closes
+overrides:
+    kysely: "^0.28.17"

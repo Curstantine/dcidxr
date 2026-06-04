@@ -96,6 +96,8 @@ export const circlesInfiniteQueryOptions = ({
 		queryFn: ({ pageParam }) =>
 			fetchCircles({ data: { search, searchType, cursor: pageParam } }),
 		getNextPageParam: (lastPage) => {
-			return lastPage.circles.length < PAGE_SIZE ? undefined : lastPage.circles.at(-1)?.id;
+			return lastPage.circles.length < PAGE_SIZE
+				? undefined
+				: lastPage.circles.at(-1)?.id;
 		},
 	});

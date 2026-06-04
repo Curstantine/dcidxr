@@ -1,6 +1,10 @@
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
-import { createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
+import {
+	createRootRouteWithContext,
+	HeadContent,
+	Scripts,
+} from "@tanstack/react-router";
 
 import { Toaster } from "@/components/sonner";
 import TanstackPacerDevtools from "@/integrations/pacer/devtools";
@@ -36,7 +40,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<TanStackDevtools
 					eventBusConfig={{ debug: false }}
 					config={{ position: "bottom-right" }}
-					plugins={[TanStackRouterDevtools, TanStackQueryDevtools, TanstackPacerDevtools]}
+					plugins={[
+						TanStackRouterDevtools,
+						TanStackQueryDevtools,
+						TanstackPacerDevtools,
+					]}
 				/>
 				<Scripts />
 				<Toaster />

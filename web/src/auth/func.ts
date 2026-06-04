@@ -5,12 +5,14 @@ import { APIError } from "better-auth/api";
 import { auth } from "@/auth";
 import { env } from "@/env";
 
-export const getSession = createServerFn({ method: "GET" }).handler(async () => {
-	const headers = getRequestHeaders();
-	const session = await auth.api.getSession({ headers });
+export const getSession = createServerFn({ method: "GET" }).handler(
+	async () => {
+		const headers = getRequestHeaders();
+		const session = await auth.api.getSession({ headers });
 
-	return session;
-});
+		return session;
+	},
+);
 
 const ensureSessionUtil = createServerOnlyFn(async () => {
 	const headers = getRequestHeaders();
@@ -21,9 +23,11 @@ const ensureSessionUtil = createServerOnlyFn(async () => {
 	return { headers, session };
 });
 
-export const ensureSession = createServerFn({ method: "GET" }).handler(async () => {
-	return (await ensureSessionUtil()).session;
-});
+export const ensureSession = createServerFn({ method: "GET" }).handler(
+	async () => {
+		return (await ensureSessionUtil()).session;
+	},
+);
 
 type DiscordGuildMember = {
 	roles: string[];
@@ -42,7 +46,11 @@ export const checkDiscordAccess = createServerOnlyFn(async (token: string) => {
 
 	const member: DiscordGuildMember = await res.json();
 
-	if (!member.roles.some((role: string) => env.DISCORD_ROLE_IDS.includes(role))) {
-		throw new APIError("FORBIDDEN", { message: "You don't have the required role." });
+	if (
+		!member.roles.some((role: string) => env.DISCORD_ROLE_IDS.includes(role))
+	) {
+		throw new APIError("FORBIDDEN", {
+			message: "You don't have the required role.",
+		});
 	}
 });

@@ -15,5 +15,11 @@
 	"routerOnly": false,
 	"version": 1,
 	"framework": "react",
-	"chosenAddOns": ["biome", "compiler", "drizzle", "better-auth", "tanstack-query"]
+	"chosenAddOns": [
+		"biome",
+		"compiler",
+		"drizzle",
+		"better-auth",
+		"tanstack-query"
+	]
 }
