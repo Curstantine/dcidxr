@@ -40,7 +40,9 @@ const ERRORS = {
 };
 
 const DEFAULT_GATEWAY = "https://g.api.mega.co.nz/";
-const DEFAULT_HTTP_AGENT = process.env.IS_BROWSER_BUILD ? null : new HttpAgent({ keepAlive: true });
+const DEFAULT_HTTP_AGENT = process.env.IS_BROWSER_BUILD
+	? null
+	: new HttpAgent({ keepAlive: true });
 const DEFAULT_HTTPS_AGENT = process.env.IS_BROWSER_BUILD
 	? null
 	: new HttpsAgent({ keepAlive: true });
@@ -73,12 +75,14 @@ class API extends EventEmitter {
 	async defaultFetch(url, opts) {
 		if (!opts) opts = {};
 		if (!opts.agent) {
-			opts.agent = (url) => (url.protocol === "http:" ? this.httpAgent : this.httpsAgent);
+			opts.agent = (url) =>
+				url.protocol === "http:" ? this.httpAgent : this.httpsAgent;
 		}
 
 		if (this.userAgent) {
 			if (!opts.headers) opts.headers = {};
-			if (!opts.headers["user-agent"]) opts.headers["user-agent"] = this.userAgent;
+			if (!opts.headers["user-agent"])
+				opts.headers["user-agent"] = this.userAgent;
 		}
 
 		if (!API.fetchModule) {
@@ -175,10 +179,13 @@ class API extends EventEmitter {
 		const controller = new AbortController();
 		const ssl = API.handleForceHttps() ? 1 : 0;
 		this.sn = controller;
-		this.fetch(`${this.gateway}sc?${new URLSearchParams({ sn, ssl, sid: this.sid })}`, {
-			method: "POST",
-			signal: controller.signal,
-		})
+		this.fetch(
+			`${this.gateway}sc?${new URLSearchParams({ sn, ssl, sid: this.sid })}`,
+			{
+				method: "POST",
+				signal: controller.signal,
+			},
+		)
 			.then(handleApiResponse)
 			.then((resp) => {
 				this.sn = undefined;

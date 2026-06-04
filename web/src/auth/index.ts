@@ -15,7 +15,7 @@ export const auth = betterAuth({
 	database: drizzleAdapter(db, { provider: "sqlite", schema }),
 	emailAndPassword: {
 		enabled: true,
-        disableSignUp: true,
+		disableSignUp: true,
 	},
 	socialProviders: {
 		discord: {

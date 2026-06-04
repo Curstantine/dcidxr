@@ -11,7 +11,10 @@ test("AES-CTR small", (t) => {
 	const ctrEncrypt = new CTR(aes, key.slice(16), 0);
 	ctrEncrypt.encrypt(data);
 
-	t.is(data.toString("hex"), "8de7dac3d95eca9fd74f30c1ecf8247a8f25d1b3fd2d11a8a7b458d16a085434");
+	t.is(
+		data.toString("hex"),
+		"8de7dac3d95eca9fd74f30c1ecf8247a8f25d1b3fd2d11a8a7b458d16a085434",
+	);
 
 	const ctrDecrypt = new CTR(aes, key.slice(16), 0);
 	ctrDecrypt.decrypt(data);

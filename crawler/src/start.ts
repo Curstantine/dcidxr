@@ -17,7 +17,10 @@ async function download(): Promise<void> {
 	await mkdir(DIST_DIR, { recursive: true });
 
 	const res = await fetch(source);
-	if (!res.ok) throw new Error(`Failed to download messages: ${res.status} ${res.statusText}`);
+	if (!res.ok)
+		throw new Error(
+			`Failed to download messages: ${res.status} ${res.statusText}`,
+		);
 
 	const rawJson = await res.text();
 	await writeFile(INPUT_PATH, rawJson, "utf8");

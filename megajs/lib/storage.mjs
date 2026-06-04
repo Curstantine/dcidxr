@@ -29,9 +29,12 @@ class Storage extends EventEmitter {
 		this.ready = promise;
 
 		// Defaults
-		options.keepalive = options.keepalive === undefined ? true : !!options.keepalive;
-		options.autoload = options.autoload === undefined ? true : !!options.autoload;
-		options.autologin = options.autologin === undefined ? true : !!options.autologin;
+		options.keepalive =
+			options.keepalive === undefined ? true : !!options.keepalive;
+		options.autoload =
+			options.autoload === undefined ? true : !!options.autoload;
+		options.autologin =
+			options.autologin === undefined ? true : !!options.autologin;
 
 		this.api = new API(options.keepalive, options);
 		this.files = {};

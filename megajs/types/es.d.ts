@@ -47,19 +47,31 @@ export declare class Storage extends EventEmitter {
 		cb?: (error: err, file: MutableFile) => void,
 	): Promise<MutableFile>;
 	login(cb?: (error: err, storage: this) => void): Promise<this>;
-	upload(opt: uploadOpts | string, buffer?: BufferString, cb?: uploadCb): UploadStream;
-	getAccountInfo(cb?: (error: err, account: accountInfo) => void): Promise<accountInfo>;
+	upload(
+		opt: uploadOpts | string,
+		buffer?: BufferString,
+		cb?: uploadCb,
+	): UploadStream;
+	getAccountInfo(
+		cb?: (error: err, account: accountInfo) => void,
+	): Promise<accountInfo>;
 	reload(
 		force?: boolean,
 		cb?: (error: err, mount: MutableFile[]) => void,
 	): Promise<MutableFile[]>;
 	on(event: "add", listener: (File: MutableFile) => void): this;
-	on(event: "move", listener: (file: MutableFile, oldDir: MutableFile) => void): this;
+	on(
+		event: "move",
+		listener: (file: MutableFile, oldDir: MutableFile) => void,
+	): this;
 	on(event: "ready", listener: (storage: this) => void): this;
 	on(event: "update", listener: (file: MutableFile) => void): this;
 	on(event: "delete", listener: (file: Readonly<File>) => void): this;
 	once(event: "add", listener: (File: MutableFile) => void): this;
-	once(event: "move", listener: (file: MutableFile, oldDir: MutableFile) => void): this;
+	once(
+		event: "move",
+		listener: (file: MutableFile, oldDir: MutableFile) => void,
+	): this;
 	once(event: "ready", listener: (storage: this) => void): this;
 	once(event: "update", listener: (file: MutableFile) => void): this;
 	once(event: "delete", listener: (file: Readonly<File>) => void): this;
@@ -113,17 +125,25 @@ export declare class File extends EventEmitter {
 	static fromURL(opt: FileOpts | string, extraOpt?: Partial<FileOpts>): File;
 	static defaultHandleRetries(tries: number, error: err, cb: errorCb): void;
 	constructor(opts: FileOpts);
-	loadAttributes(cb?: (error: err, file: File | this) => void): Promise<File | this>;
+	loadAttributes(
+		cb?: (error: err, file: File | this) => void,
+	): Promise<File | this>;
 	parseAttributes(at: BufferString): void;
 	decryptAttributes(at: BufferString): void;
 	loadMetadata(aes: AES, opt: metaOpts): void;
 	checkConstructorArgument(value: BufferString): void;
-	download(options: downloadOpts, cb?: (error: err, data?: Buffer) => void): Readable;
+	download(
+		options: downloadOpts,
+		cb?: (error: err, data?: Buffer) => void,
+	): Readable;
 	downloadBuffer(
 		options: downloadOpts,
 		cb?: (error: err, data?: Buffer) => void,
 	): Promise<Buffer>;
-	link(options: linkOpts | boolean, cb?: (error: err, url?: string) => void): Promise<string>;
+	link(
+		options: linkOpts | boolean,
+		cb?: (error: err, url?: string) => void,
+	): Promise<string>;
 	filter(
 		query: string | string[] | ((file: MutableFile) => boolean),
 		deep?: boolean,
@@ -144,13 +164,29 @@ declare class MutableFile extends File {
 	unshareFolder(cb?: noop): Promise<void>;
 	rename(filename: string, cb?: noop): Promise<void>;
 	setLabel(label: labelType, cb?: noop): Promise<void>;
-	shareFolder(options: linkOpts, cb?: (error: err, url?: string) => void): Promise<string>;
+	shareFolder(
+		options: linkOpts,
+		cb?: (error: err, url?: string) => void,
+	): Promise<string>;
 	setFavorite(isFavorite?: boolean, cb?: noop): Promise<void>;
 	setAttributes(attributes: JSON, cb?: noop): Promise<void>;
-	delete(permanent?: boolean, cb?: (error: err, data?: any) => void): Promise<void>;
-	moveTo(target: File | string, cb?: (error: err, data?: any) => void): Promise<void>;
-	copyTo(target: File | string, cb?: (error: err, data?: any) => void): Promise<void>;
-	upload(opts: uploadOpts | string, source?: BufferString, cb?: uploadCb): Writable;
+	delete(
+		permanent?: boolean,
+		cb?: (error: err, data?: any) => void,
+	): Promise<void>;
+	moveTo(
+		target: File | string,
+		cb?: (error: err, data?: any) => void,
+	): Promise<void>;
+	copyTo(
+		target: File | string,
+		cb?: (error: err, data?: any) => void,
+	): Promise<void>;
+	upload(
+		opts: uploadOpts | string,
+		source?: BufferString,
+		cb?: uploadCb,
+	): Writable;
 	mkdir(
 		opts: mkdirOpts | string,
 		cb?: (error: err, file: MutableFile) => void,

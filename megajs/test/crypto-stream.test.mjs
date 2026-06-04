@@ -1,6 +1,9 @@
 import test from "ava";
 
-import { decrypt as megaDecrypt, encrypt as megaEncrypt } from "../dist/main.node-es.mjs";
+import {
+	decrypt as megaDecrypt,
+	encrypt as megaEncrypt,
+} from "../dist/main.node-es.mjs";
 import { sha1, stream2promise, testBuffer } from "./helpers/test-utils.mjs";
 
 // encrypt - decrypt

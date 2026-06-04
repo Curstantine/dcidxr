@@ -7,7 +7,12 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-	"includes": ["!**/routeTree.gen.ts"]
+		"includes": [
+			"!!**/routeTree.gen.ts",
+			"!!**/dist",
+			"!!**/.tanstack",
+			"!!**/.output"
+		]
 	},
 	"linter": {
 		"enabled": true,

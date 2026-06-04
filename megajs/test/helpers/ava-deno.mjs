@@ -3,7 +3,12 @@
 
 import { Buffer } from "node:buffer";
 
-import { assert, assertEquals, assertStrictEquals, assertThrows } from "jsr:@std/assert";
+import {
+	assert,
+	assertEquals,
+	assertStrictEquals,
+	assertThrows,
+} from "jsr:@std/assert";
 
 const testContext = {
 	assert,

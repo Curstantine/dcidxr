@@ -13,7 +13,11 @@ export function formatKey(key) {
 
 // URL Safe Base64 encode/decode
 function e64(buffer) {
-	return buffer.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+	return buffer
+		.toString("base64")
+		.replace(/\+/g, "-")
+		.replace(/\//g, "_")
+		.replace(/=/g, "");
 }
 
 function d64(s) {
@@ -29,7 +33,9 @@ export function getCipher(key) {
 function megaEncrypt(key, options = {}) {
 	const start = options.start || 0;
 	if (start !== 0) {
-		throw Error("Encryption cannot start midstream otherwise MAC verification will fail.");
+		throw Error(
+			"Encryption cannot start midstream otherwise MAC verification will fail.",
+		);
 	}
 	key = formatKey(key);
 
@@ -66,7 +72,8 @@ function megaEncrypt(key, options = {}) {
 function megaDecrypt(key, options = {}) {
 	const start = options.start || 0;
 	if (start !== 0) options.disableVerification = true;
-	if (start % 16 !== 0) throw Error("start argument of megaDecrypt must be a multiple of 16");
+	if (start % 16 !== 0)
+		throw Error("start argument of megaDecrypt must be a multiple of 16");
 	key = formatKey(key);
 	if (!(key instanceof Buffer)) {
 		key = Buffer.from(key);
@@ -185,7 +192,9 @@ export async function generateHashcashToken(challenge) {
 	}
 
 	while (true) {
-		const view = new DataView(await globalThis.crypto.subtle.digest("SHA-256", buffer));
+		const view = new DataView(
+			await globalThis.crypto.subtle.digest("SHA-256", buffer),
+		);
 		if (view.getUint32(0) <= threshold) {
 			return `1:${tokenStr}:${e64(buffer.slice(0, 4))}`;
 		}

@@ -47,9 +47,7 @@ function RouteComponent() {
 			});
 
 			if (result.error) {
-				setEmailError(
-					result.error.message ?? "Invalid email or password.",
-				);
+				setEmailError(result.error.message ?? "Invalid email or password.");
 			}
 		} catch (err) {
 			setEmailError(
@@ -69,7 +67,10 @@ function RouteComponent() {
 			)}
 			<h1 className="text-2xl mb-6 font-medium">Login</h1>
 
-			<form onSubmit={handleEmailLogin} className="w-full flex flex-col gap-3 mb-6">
+			<form
+				onSubmit={handleEmailLogin}
+				className="w-full flex flex-col gap-3 mb-6"
+			>
 				<Input
 					name="email"
 					type="email"

@@ -1,11 +1,16 @@
-export function normalizeString(value: string | null | undefined): string | null {
+export function normalizeString(
+	value: string | null | undefined,
+): string | null {
 	if (typeof value !== "string") return null;
 
 	const normalized = value.trim();
 	return normalized.length > 0 ? normalized : null;
 }
 
-export function normalizeNodeName(name: string | null | undefined, fallback = "Unknown"): string {
+export function normalizeNodeName(
+	name: string | null | undefined,
+	fallback = "Unknown",
+): string {
 	const normalized = typeof name === "string" ? name.trim() : "";
 	return normalized.length > 0 ? normalized : fallback;
 }

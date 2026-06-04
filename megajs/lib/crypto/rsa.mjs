@@ -189,7 +189,11 @@ function bdiv(a, b) {
 	let i;
 
 	// trivial cases; a < b
-	if (n < t || (n === t && (a[n] < b[n] || (n > 0 && a[n] === b[n] && a[n - 1] < b[n - 1])))) {
+	if (
+		n < t ||
+		(n === t &&
+			(a[n] < b[n] || (n > 0 && a[n] === b[n] && a[n - 1] < b[n - 1])))
+	) {
 		globalState.q = [0];
 		globalState.mod = a;
 		return globalState;
@@ -218,13 +222,15 @@ function bdiv(a, b) {
 	const y = b.concat();
 
 	if (shift) {
-		for (i = t; i > 0; i--) y[i] = ((y[i] << shift) & bm) | (y[i - 1] >> shift2);
+		for (i = t; i > 0; i--)
+			y[i] = ((y[i] << shift) & bm) | (y[i - 1] >> shift2);
 		y[0] = (y[0] << shift) & bm;
 		if (x[n] & ((bm << shift2) & bm)) {
 			x[++n] = 0;
 			nmt++;
 		}
-		for (i = n; i > 0; i--) x[i] = ((x[i] << shift) & bm) | (x[i - 1] >> shift2);
+		for (i = n; i > 0; i--)
+			x[i] = ((x[i] << shift) & bm) | (x[i - 1] >> shift2);
 		x[0] = (x[0] << shift) & bm;
 	}
 
@@ -265,7 +271,8 @@ function bdiv(a, b) {
 	}
 	// de-normalize
 	if (shift) {
-		for (i = 0; i < x.length - 1; i++) x[i] = (x[i] >> shift) | ((x[i + 1] << shift2) & bm);
+		for (i = 0; i < x.length - 1; i++)
+			x[i] = (x[i] >> shift) | ((x[i + 1] << shift2) & bm);
 		x[x.length - 1] >>= shift;
 	}
 
@@ -300,7 +307,8 @@ function bmod(p, m) {
 
 function bmod2(x, m, mu) {
 	const xl = x.length - (m.length << 1);
-	if (xl > 0) return bmod2(x.slice(0, xl).concat(bmod2(x.slice(xl), m, mu)), m, mu);
+	if (xl > 0)
+		return bmod2(x.slice(0, xl).concat(bmod2(x.slice(xl), m, mu)), m, mu);
 
 	const ml1 = m.length + 1;
 	const ml2 = m.length - 1;
@@ -457,7 +465,13 @@ function cryptoDecodePrivKey(privk) {
 function cryptoRsaDecrypt(ciphertext, privkey) {
 	const integerCiphertext = mpi2b(ciphertext.toString("binary"));
 	const plaintext = b2s(
-		RSAdecrypt(integerCiphertext, privkey[2], privkey[0], privkey[1], privkey[3]),
+		RSAdecrypt(
+			integerCiphertext,
+			privkey[2],
+			privkey[0],
+			privkey[1],
+			privkey[3],
+		),
 	);
 	return Buffer.from(plaintext, "binary");
 }

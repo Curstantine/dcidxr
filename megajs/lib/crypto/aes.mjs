@@ -44,7 +44,9 @@ class AES {
 
 	encryptCBC(buffer) {
 		const iv = Buffer.alloc(16, 0);
-		const cipher = crypto.createCipheriv("aes-128-cbc", this.key, iv).setAutoPadding(false);
+		const cipher = crypto
+			.createCipheriv("aes-128-cbc", this.key, iv)
+			.setAutoPadding(false);
 
 		const result = Buffer.concat([cipher.update(buffer), cipher.final()]);
 		result.copy(buffer);
@@ -53,7 +55,9 @@ class AES {
 
 	decryptCBC(buffer) {
 		const iv = Buffer.alloc(16, 0);
-		const decipher = crypto.createDecipheriv("aes-128-cbc", this.key, iv).setAutoPadding(false);
+		const decipher = crypto
+			.createDecipheriv("aes-128-cbc", this.key, iv)
+			.setAutoPadding(false);
 
 		const result = Buffer.concat([decipher.update(buffer), decipher.final()]);
 		result.copy(buffer);
@@ -76,7 +80,11 @@ class AES {
 			hash.writeInt32BE(h32[i], i * 4, true);
 		}
 
-		const cipher = crypto.createCipheriv("aes-128-ecb", this.key, Buffer.alloc(0));
+		const cipher = crypto.createCipheriv(
+			"aes-128-ecb",
+			this.key,
+			Buffer.alloc(0),
+		);
 		for (let i = 16384; i--; ) hash = cipher.update(hash);
 
 		const result = Buffer.allocUnsafe(8);
@@ -166,7 +174,11 @@ class MAC {
 	constructor(aes, nonce) {
 		this.key = aes.key;
 		this.nonce = nonce.slice(0, 8);
-		this.macCipher = crypto.createCipheriv("aes-128-ecb", this.key, Buffer.alloc(0));
+		this.macCipher = crypto.createCipheriv(
+			"aes-128-ecb",
+			this.key,
+			Buffer.alloc(0),
+		);
 
 		this.posNext = this.increment = 131072; // 2**17
 		this.pos = 0;

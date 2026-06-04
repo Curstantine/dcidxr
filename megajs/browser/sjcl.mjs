@@ -199,7 +199,11 @@ class AES {
 		// Inner rounds.  Cribbed from OpenSSL.
 		for (i = 0; i < nInnerRounds; i++) {
 			a2 =
-				t0[a >>> 24] ^ t1[(b >> 16) & 255] ^ t2[(c >> 8) & 255] ^ t3[d & 255] ^ key[kIndex];
+				t0[a >>> 24] ^
+				t1[(b >> 16) & 255] ^
+				t2[(c >> 8) & 255] ^
+				t3[d & 255] ^
+				key[kIndex];
 			b2 =
 				t0[b >>> 24] ^
 				t1[(c >> 16) & 255] ^
