@@ -10,7 +10,6 @@
 		"build": "vite build",
 		"start": "node .output/server/index.mjs",
 		"preview": "vite preview",
-		"test": "vitest run",
 		"format": "oxfmt",
 		"lint": "oxlint",
 		"check": "oxlint && oxfmt --check",
