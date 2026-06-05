@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { type SubmitEvent, useState } from "react";
 import z from "zod";
+import { toast } from "sonner";
 
 import { authClient } from "@/auth/client";
 import { getSession } from "@/auth/func";
@@ -24,7 +25,6 @@ function RouteComponent() {
 	const { hasAccess, error } = Route.useSearch();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
-	const [emailError, setEmailError] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 
 	const handleDiscordLogin = async () => {
@@ -36,7 +36,6 @@ function RouteComponent() {
 
 	const handleEmailLogin = async (e: SubmitEvent) => {
 		e.preventDefault();
-		setEmailError(null);
 		setIsLoading(true);
 
 		try {
@@ -47,10 +46,10 @@ function RouteComponent() {
 			});
 
 			if (result.error) {
-				setEmailError(result.error.message ?? "Invalid email or password.");
+				toast.error(result.error.message ?? "Invalid email or password.");
 			}
 		} catch (err) {
-			setEmailError(err instanceof Error ? err.message : "An unexpected error occurred.");
+			toast.error(err instanceof Error ? err.message : "An unexpected error occurred.");
 		} finally {
 			setIsLoading(false);
 		}
@@ -84,9 +83,6 @@ function RouteComponent() {
 					required
 					autoComplete="current-password"
 				/>
-				{emailError && (
-					<p className="text-sm text-red-500 dark:text-red-400">{emailError}</p>
-				)}
 				{error && <p className="text-sm text-red-500 dark:text-red-400">{error}</p>}
 				<Button type="submit" size="lg" disabled={isLoading}>
 					{isLoading ? "Signing in..." : "Sign in with Email"}

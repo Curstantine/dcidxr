@@ -1,10 +1,11 @@
 import { useDebouncer } from "@tanstack/react-pacer";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
-import { LucideCopy, LucideSearch } from "lucide-react";
+import { LucideCopy, LucideLogOut, LucideSearch } from "lucide-react";
 import { type ChangeEvent, type SubmitEvent, Suspense, useState } from "react";
 import { toast } from "sonner";
 
+import { authClient } from "@/auth/client";
 import { getSession } from "@/auth/func";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
@@ -52,10 +53,29 @@ export const Route = createFileRoute("/")({
 });
 
 function RouteComponent() {
+	const router = useRouter();
+
 	return (
 		<main className="max-w-4xl mx-auto px-2">
-			<nav className="text-center py-2 text-sm sticky top-0 bg-background h-10">
-				Doujin Cafe - <code className="bg-accent p-0.5 rounded">#collection</code> Index
+			<nav className="flex items-center justify-between py-2 text-sm sticky top-0 bg-background h-10">
+				<div className="flex-1" />
+				<span>
+					Doujin Cafe - <code className="bg-accent p-0.5 rounded">#collection</code> Index
+				</span>
+				<div className="flex-1 flex justify-end">
+					<Button
+						type="button"
+						size="sm"
+						variant="ghost"
+						onClick={async () => {
+							await authClient.signOut();
+							router.navigate({ to: "/auth/login" });
+						}}
+					>
+						<LucideLogOut className="size-3" />
+						Logout
+					</Button>
+				</div>
 			</nav>
 
 			<Form />
@@ -239,10 +259,7 @@ function CircleLine({
 						size="sm"
 						variant="link"
 						nativeButton={false}
-						render={
-							// oxlint-disable-next-line jsx-a11y/anchor-has-content: children is passed by the Button
-							<a href={missingLink} target="_blank" rel="noopener noreferrer" />
-						}
+						render={<a href={missingLink} target="_blank" rel="noopener noreferrer" />}
 					>
 						Missing
 					</Button>
