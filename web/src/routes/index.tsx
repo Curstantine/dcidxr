@@ -89,7 +89,7 @@ function RouteComponent() {
 
 				<div className="flex-1" />
 				<a href={env.VITE_SOURCE_URL} target="_blank" rel="noopener noreferrer">
-					Source
+					#source
 				</a>
 			</footer>
 		</main>
