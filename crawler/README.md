@@ -41,11 +41,13 @@ RAILWAY_VOLUME_MOUNT_PATH=./dist
 ## Getting Started
 
 1. Install dependencies (from workspace root):
+
 ```/dev/null/commands.sh#L1-1
 pnpm install
 ```
 
 2. Run the pipeline stages manually in order:
+
 ```/dev/null/commands.sh#L1-7
 # Transform input data
 pnpm --filter crawler transform
@@ -80,8 +82,8 @@ The `start` command does not use `dist/` defaults. It uses the latest snapshot f
 
 ## Code Quality Scripts
 
-- `pnpm format` - Format code with Biome
-- `pnpm lint` - Lint code with Biome
+- `pnpm format` - Format code with oxfmt
+- `pnpm lint` - Lint code with oxlint
 - `pnpm check` - Run format and lint checks
 
 ## Project Structure

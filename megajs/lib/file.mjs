@@ -4,14 +4,7 @@ import { PassThrough } from "stream";
 import StreamSkip from "stream-skip";
 
 import API from "./api.mjs";
-import {
-	AES,
-	d64,
-	e64,
-	formatKey,
-	getCipher,
-	megaDecrypt,
-} from "./crypto/index.mjs";
+import { AES, d64, e64, formatKey, getCipher, megaDecrypt } from "./crypto/index.mjs";
 import { createPromise, streamToCb } from "./util.mjs";
 
 class File extends EventEmitter {
@@ -198,9 +191,7 @@ class File extends EventEmitter {
 
 				this.loadMetadata(aes, folder);
 				if (this.key && !this.attributes) {
-					return cb(
-						Error("Attributes could not be decrypted with provided key."),
-					);
+					return cb(Error("Attributes could not be decrypted with provided key."));
 				}
 
 				if (this.loadedFile) {
@@ -218,9 +209,7 @@ class File extends EventEmitter {
 				this.decryptAttributes(response.at);
 
 				if (this.key && !this.attributes) {
-					return cb(
-						Error("Attributes could not be decrypted with provided key."),
-					);
+					return cb(Error("Attributes could not be decrypted with provided key."));
 				}
 
 				cb(null, this);
@@ -263,8 +252,7 @@ class File extends EventEmitter {
 			req.p = this.downloadId;
 		}
 
-		if (this.directory)
-			throw Error("Can't download: folder download isn't supported");
+		if (this.directory) throw Error("Can't download: folder download isn't supported");
 
 		// If options.returnCiphertext is true then the ciphertext is returned.
 		// The result can be decrypted later using mega.decrypt() stream
@@ -292,15 +280,10 @@ class File extends EventEmitter {
 
 		this.api.request(req, (err, response) => {
 			if (err) return stream.emit("error", err);
-			if (
-				typeof response.g !== "string" ||
-				response.g.substr(0, 4) !== "http"
-			) {
+			if (typeof response.g !== "string" || response.g.substr(0, 4) !== "http") {
 				return stream.emit(
 					"error",
-					Error(
-						"MEGA servers returned an invalid response, maybe caused by rate limit",
-					),
+					Error("MEGA servers returned an invalid response, maybe caused by rate limit"),
 				);
 			}
 
@@ -309,19 +292,14 @@ class File extends EventEmitter {
 
 			if (!end) end = response.s - 1;
 			if (start > end)
-				return stream.emit(
-					"error",
-					Error("You can't download past the end of the file."),
-				);
+				return stream.emit("error", Error("You can't download past the end of the file."));
 
 			function handleMegaErrors(resp) {
 				if (resp.status === 200) return;
 				if (resp.status === 509) {
 					const timeLimit = resp.headers.get("x-mega-time-left");
 					const error = Error(
-						"Bandwidth limit reached: " +
-							timeLimit +
-							" seconds until it resets",
+						"Bandwidth limit reached: " + timeLimit + " seconds until it resets",
 					);
 
 					// Export error as a property of the error
@@ -331,10 +309,7 @@ class File extends EventEmitter {
 					return;
 				}
 
-				stream.emit(
-					"error",
-					Error("MEGA returned a " + resp.status + " status code"),
-				);
+				stream.emit("error", Error("MEGA returned a " + resp.status + " status code"));
 			}
 
 			function handleError(err) {
@@ -513,9 +488,7 @@ class File extends EventEmitter {
 			};
 		}
 
-		const downloadId = Array.isArray(this.downloadId)
-			? this.downloadId[1]
-			: this.downloadId;
+		const downloadId = Array.isArray(this.downloadId) ? this.downloadId[1] : this.downloadId;
 		let url = `https://mega.nz/${this.directory ? "folder" : "file"}/${downloadId}`;
 		if (!options.noKey && this.key) url += `#${e64(this.key)}`;
 		if (!options.noKey && this.loadedFile) {
@@ -580,8 +553,7 @@ class File extends EventEmitter {
 	}
 
 	navigate(query) {
-		if (!this.children)
-			throw Error("You can only call .navigate on directories");
+		if (!this.children) throw Error("You can only call .navigate on directories");
 
 		if (typeof query === "string") {
 			query = query.split("/");
@@ -590,9 +562,7 @@ class File extends EventEmitter {
 		}
 
 		return query.reduce((node, name) => {
-			return (
-				node && node.children && node.children.find((e) => e.name === name)
-			);
+			return node && node.children && node.children.find((e) => e.name === name);
 		}, this);
 	}
 
@@ -681,16 +651,7 @@ class File extends EventEmitter {
 	}
 }
 
-const LABEL_NAMES = [
-	"",
-	"red",
-	"orange",
-	"yellow",
-	"green",
-	"blue",
-	"purple",
-	"grey",
-];
+const LABEL_NAMES = ["", "red", "orange", "yellow", "green", "blue", "purple", "grey"];
 
 export default File;
 

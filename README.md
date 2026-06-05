@@ -17,6 +17,7 @@ A monorepo for indexing and browsing doujin music collections from MEGA.
 ## Getting Started
 
 1. Install dependencies:
+
 ```bash
 pnpm install
 ```

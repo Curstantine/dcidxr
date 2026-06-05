@@ -1,9 +1,4 @@
-import {
-	readJsonFile,
-	resolveInputPath,
-	resolveOutputPath,
-	writeJsonFile,
-} from "./utils/files.ts";
+import { readJsonFile, resolveInputPath, resolveOutputPath, writeJsonFile } from "./utils/files.ts";
 import type {
 	GroupBase,
 	Message,
@@ -73,8 +68,7 @@ function parseStatusLine(line: string): {
 	}
 
 	const value = match[1].trim();
-	const updatedMatch =
-		value.match(STATUS_UPDATE_REGEX) ?? value.match(TRAILING_DATE_REGEX);
+	const updatedMatch = value.match(STATUS_UPDATE_REGEX) ?? value.match(TRAILING_DATE_REGEX);
 	const lastUpdated = updatedMatch?.[1].trim() ?? null;
 
 	const withoutUpdate = updatedMatch
@@ -90,10 +84,7 @@ function parseStatusLine(line: string): {
 	return { status, statusMeta, lastUpdated };
 }
 
-function getOrCreateGroup(
-	groups: Map<string, MutableGroup>,
-	circle: string,
-): MutableGroup {
+function getOrCreateGroup(groups: Map<string, MutableGroup>, circle: string): MutableGroup {
 	const existing = groups.get(circle);
 	if (existing) {
 		return existing;
@@ -126,8 +117,7 @@ function collectGroups(messages: Message[]): GroupBase[] {
 			const circleMatch = line.match(CIRCLE_REGEX);
 			if (circleMatch) {
 				const normalized = normalizeCircleName(circleMatch[1]);
-				currentCircle =
-					normalized.length > 0 && normalized !== " " ? normalized : null;
+				currentCircle = normalized.length > 0 && normalized !== " " ? normalized : null;
 
 				if (currentCircle) {
 					getOrCreateGroup(groups, currentCircle);
@@ -172,10 +162,7 @@ function collectGroups(messages: Message[]): GroupBase[] {
 		.filter((group) => group.links.length > 0);
 }
 
-export async function transform(
-	inputArg?: string,
-	outputArg?: string,
-): Promise<void> {
+export async function transform(inputArg?: string, outputArg?: string): Promise<void> {
 	const inputPath = resolveInputPath(inputArg, "dist/input.json");
 	const outputPath = resolveOutputPath(outputArg, "dist/transformed.json");
 	const inputJson = await readJsonFile<TransformInputPayload>(inputPath);
@@ -190,7 +177,5 @@ export async function transform(
 	await writeJsonFile(outputPath, outputJson);
 
 	const totalLinks = groups.reduce((sum, group) => sum + group.links.length, 0);
-	console.log(
-		`Wrote ${groups.length} circles and ${totalLinks} MEGA links to ${outputPath}`,
-	);
+	console.log(`Wrote ${groups.length} circles and ${totalLinks} MEGA links to ${outputPath}`);
 }

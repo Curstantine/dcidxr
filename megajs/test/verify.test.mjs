@@ -7,10 +7,7 @@ test("MEGA verify stream", async (t) => {
 	const size = 151511;
 	const d0 = testBuffer(size);
 	const d0e = Buffer.from(d0);
-	const key = Buffer.from(
-		"AAAAAAAAAABnFCfbJFwAxwAAAAAAAAAAZxQn2yRcAMc",
-		"base64",
-	);
+	const key = Buffer.from("AAAAAAAAAABnFCfbJFwAxwAAAAAAAAAAZxQn2yRcAMc", "base64");
 	const verifyStream = verify(key);
 
 	verifyStream.write(d0e.slice(0, 50000));

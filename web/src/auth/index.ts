@@ -27,8 +27,7 @@ export const auth = betterAuth({
 	},
 	hooks: {
 		after: createAuthMiddleware(async (ctx) => {
-			if (!(ctx.path === "/callback/:id" && ctx.params.id === "discord"))
-				return;
+			if (!(ctx.path === "/callback/:id" && ctx.params.id === "discord")) return;
 			if (ctx.context.newSession === null) {
 				throw new APIError("UNAUTHORIZED", { message: "No session" });
 			}
@@ -39,19 +38,14 @@ export const auth = betterAuth({
 
 			// The OAuth response is on the context after the callback
 			const accessToken = discordAccessToken.accessToken;
-			if (!accessToken)
-				throw new APIError("UNAUTHORIZED", { message: "No access token" });
+			if (!accessToken) throw new APIError("UNAUTHORIZED", { message: "No access token" });
 
 			try {
 				await checkDiscordAccess(accessToken);
 			} catch (e) {
 				if (e instanceof APIError && e.status === "FORBIDDEN") {
-					await ctx.context.internalAdapter.deleteUser(
-						ctx.context.newSession.user.id,
-					);
-					ctx.context.internalAdapter.deleteSession(
-						ctx.context.newSession.user.id,
-					);
+					await ctx.context.internalAdapter.deleteUser(ctx.context.newSession.user.id);
+					ctx.context.internalAdapter.deleteSession(ctx.context.newSession.user.id);
 					ctx.redirect("/auth/login?hasAccess=false");
 				}
 

@@ -7,18 +7,19 @@
 		"transform": "node --experimental-strip-types ./src/index.ts transform",
 		"fetch": "node --experimental-strip-types ./src/index.ts fetch",
 		"sync": "node --experimental-strip-types ./src/index.ts sync",
-		"format": "biome format",
-		"lint": "biome lint",
-		"check": "biome check"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "2.4.16",
-		"@types/node": "^24.12.4"
+		"format": "oxfmt",
+		"lint": "oxlint",
+		"check": "oxlint && oxfmt --check"
 	},
 	"dependencies": {
 		"dotenv": "^17.4.2",
 		"drizzle-orm": "1.0.0-beta.21",
 		"megajs": "workspace:^",
 		"pg": "^8.21.0"
+	},
+	"devDependencies": {
+		"@types/node": "^24.12.4",
+		"oxfmt": "^0.53.0",
+		"oxlint": "^1.68.0"
 	}
 }

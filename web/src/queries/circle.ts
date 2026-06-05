@@ -68,7 +68,7 @@ export const fetchCircles = createServerFn({ method: "GET" })
 			with: {
 				releases: {
 					columns: { id: true, name: true, sizeMb: true, megaLink: true },
-					// biome-ignore lint/complexity/noBannedTypes: I don't know...
+					// oxlint-disable-next-line typescript/no-banned-types: I don't know...
 					...(clause.with?.releases ?? ({} as unknown as {})),
 				},
 			},
@@ -96,8 +96,6 @@ export const circlesInfiniteQueryOptions = ({
 		queryFn: ({ pageParam }) =>
 			fetchCircles({ data: { search, searchType, cursor: pageParam } }),
 		getNextPageParam: (lastPage) => {
-			return lastPage.circles.length < PAGE_SIZE
-				? undefined
-				: lastPage.circles.at(-1)?.id;
+			return lastPage.circles.length < PAGE_SIZE ? undefined : lastPage.circles.at(-1)?.id;
 		},
 	});

@@ -43,12 +43,8 @@ function printUsage(): void {
 	console.error("  node src/index.ts sync [inputPath]");
 	console.error("");
 	console.error("Defaults:");
-	console.error(
-		"  transform: input=dist/input.json output=dist/transformed.json",
-	);
-	console.error(
-		"  fetch:     input=dist/transformed.json output=dist/releases.json",
-	);
+	console.error("  transform: input=dist/input.json output=dist/transformed.json");
+	console.error("  fetch:     input=dist/transformed.json output=dist/releases.json");
 	console.error("  sync:      input=dist/releases.json");
 }
 

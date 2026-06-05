@@ -15,6 +15,7 @@ Copy the `.env.example` to `.env.local` and update the necessary variables.
 ## Getting Started
 
 1. Install dependencies (from workspace root):
+
 ```
 pnpm install
 ```
@@ -30,6 +31,7 @@ pnpm --filter web db:migrate
 ```
 
 3. Start the development server:
+
 ```bash
 pnpm --filter web dev
 ```
@@ -43,17 +45,19 @@ The application will be available at `http://localhost:3000`.
 - `pnpm start` - Start production server
 - `pnpm preview` - Preview production build
 - `pnpm test` - Run tests
-- `pnpm format` - Format code with Biome
-- `pnpm lint` - Lint code with Biome
+- `pnpm format` - Format code with oxfmt
+- `pnpm lint` - Lint code with oxlint
 - `pnpm check` - Run format and lint checks
 
 ### Database Scripts
 
 **Migration workflow (recommended for production):**
+
 - `pnpm db:generate` - Generate migration files from schema changes
 - `pnpm db:migrate` - Apply pending migrations to database
 
 **Database management:**
+
 - `pnpm db:studio` - Open Drizzle Studio (visual database browser)
 
 ## Project Structure

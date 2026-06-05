@@ -2,17 +2,8 @@ import path from "node:path";
 
 import { File as MegaFile } from "megajs";
 
-import {
-	readJsonFile,
-	resolveInputPath,
-	resolveOutputPath,
-	writeJsonFile,
-} from "./utils/files.ts";
-import {
-	dedupeByKey,
-	mapWithConcurrency,
-	normalizeNodeName,
-} from "./utils/index.ts";
+import { readJsonFile, resolveInputPath, resolveOutputPath, writeJsonFile } from "./utils/files.ts";
+import { dedupeByKey, mapWithConcurrency, normalizeNodeName } from "./utils/index.ts";
 import type {
 	FetchGroup,
 	FetchInputPayload,
@@ -149,10 +140,7 @@ function sumFileSizes(files: ReleaseFile[]): number {
 	return files.reduce((total, file) => total + file.sizeBytes, 0);
 }
 
-async function buildRelease(
-	node: MegaFile,
-	rootLink: string,
-): Promise<Release> {
+async function buildRelease(node: MegaFile, rootLink: string): Promise<Release> {
 	const name = normalizeNodeName(node.name);
 	const files = node.directory
 		? collectLeafFiles(node)
@@ -226,10 +214,7 @@ function dedupeReleases(releases: Release[]): Release[] {
 	);
 }
 
-export async function fetchReleases(
-	inputArg?: string,
-	outputArg?: string,
-): Promise<void> {
+export async function fetchReleases(inputArg?: string, outputArg?: string): Promise<void> {
 	const inputPath = resolveInputPath(inputArg, "dist/transformed.json");
 	const outputPath = resolveOutputPath(outputArg, "dist/releases.json");
 	const inputJson = await readJsonFile<FetchInputPayload>(inputPath);
@@ -245,31 +230,25 @@ export async function fetchReleases(
 		group.links.map((link) => ({ groupIndex, circle: group.circle, link })),
 	);
 
-	const taskResults = await mapWithConcurrency(
-		linkTasks,
-		DEFAULT_CONCURRENCY,
-		async (task) => {
-			processedLinkCount += 1;
-			console.log(
-				`[${processedLinkCount}/${totalLinks}] Fetching ${task.circle}: ${task.link}`,
-			);
+	const taskResults = await mapWithConcurrency(linkTasks, DEFAULT_CONCURRENCY, async (task) => {
+		processedLinkCount += 1;
+		console.log(`[${processedLinkCount}/${totalLinks}] Fetching ${task.circle}: ${task.link}`);
 
-			try {
-				return {
-					groupIndex: task.groupIndex,
-					releases: await fetchReleasesFromLink(task.link),
-					error: null,
-				};
-			} catch (error: unknown) {
-				const message = error instanceof Error ? error.message : String(error);
-				return {
-					groupIndex: task.groupIndex,
-					releases: [],
-					error: `${task.link}: ${message}`,
-				};
-			}
-		},
-	);
+		try {
+			return {
+				groupIndex: task.groupIndex,
+				releases: await fetchReleasesFromLink(task.link),
+				error: null,
+			};
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			return {
+				groupIndex: task.groupIndex,
+				releases: [],
+				error: `${task.link}: ${message}`,
+			};
+		}
+	});
 
 	const groupAccumulators: GroupAccumulator[] = groups.map(() => ({
 		releaseSets: [],
@@ -286,8 +265,8 @@ export async function fetchReleases(
 
 	const outputGroups: FetchGroup[] = groups.map((group, groupIndex) => {
 		const accumulator = groupAccumulators[groupIndex];
-		const releases = dedupeReleases(accumulator.releaseSets.flat()).sort(
-			(a, b) => a.name.localeCompare(b.name),
+		const releases = dedupeReleases(accumulator.releaseSets.flat()).sort((a, b) =>
+			a.name.localeCompare(b.name),
 		);
 
 		return {
@@ -300,10 +279,7 @@ export async function fetchReleases(
 	const outputJson: FetchOutputPayload = { groups: outputGroups };
 	await writeJsonFile(outputPath, outputJson);
 
-	const totalReleases = outputGroups.reduce(
-		(sum, group) => sum + group.releases.length,
-		0,
-	);
+	const totalReleases = outputGroups.reduce((sum, group) => sum + group.releases.length, 0);
 	console.log(
 		`Wrote ${outputGroups.length} groups, ${totalLinks} MEGA links, and ${totalReleases} releases to ${outputPath}`,
 	);

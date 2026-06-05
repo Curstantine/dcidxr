@@ -4,9 +4,7 @@ const esbuild = require("esbuild");
 const fs = require("fs");
 
 const developmentMode = process.argv.includes("--dev");
-const formatFilters = process.argv
-	.filter((e) => e.startsWith("--only="))
-	.map((e) => e.substr(7));
+const formatFilters = process.argv.filter((e) => e.startsWith("--only=")).map((e) => e.substr(7));
 
 const formats = [
 	{
@@ -60,9 +58,7 @@ async function doBundle(format) {
 		entryPoints: format.entryPoints,
 		bundle: true,
 		define: {
-			"process.env.IS_BROWSER_BUILD": JSON.stringify(
-				format.name.includes("browser"),
-			),
+			"process.env.IS_BROWSER_BUILD": JSON.stringify(format.name.includes("browser")),
 			"process.env.PACKAGE_VERSION": JSON.stringify(packageJson.version),
 		},
 		format: format.bundleFormat,
@@ -108,11 +104,7 @@ async function doBundle(format) {
 }
 
 async function doBuild() {
-	console.error(
-		"Starting",
-		developmentMode ? "development" : "production",
-		"build...",
-	);
+	console.error("Starting", developmentMode ? "development" : "production", "build...");
 	console.error("Building 0 of %d", formats.length);
 
 	// Make dist folder if not exists
@@ -122,8 +114,7 @@ async function doBuild() {
 
 	for (let index = 0; index < formats.length; index++) {
 		const format = formats[index];
-		if (formatFilters.length > 0 && !formatFilters.includes(format.name))
-			continue;
+		if (formatFilters.length > 0 && !formatFilters.includes(format.name)) continue;
 
 		// return the previous line (A), then to the first character (G), clean the line (2K) and print state
 		console.log(

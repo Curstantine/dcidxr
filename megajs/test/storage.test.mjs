@@ -10,9 +10,7 @@ import { sha1, testBuffer } from "./helpers/test-utils.mjs";
 
 // Set up Storage to use test server and credentials
 const gatewayUrl =
-	typeof Deno !== "undefined"
-		? Deno.env.get("MEGA_MOCK_URL")
-		: process.env.MEGA_MOCK_URL;
+	typeof Deno !== "undefined" ? Deno.env.get("MEGA_MOCK_URL") : process.env.MEGA_MOCK_URL;
 if (!gatewayUrl) throw Error("Missing MEGA_MOCK_URL environment variable");
 
 // Reused between tests
@@ -39,10 +37,7 @@ test.serial("Should require an email when logging to MEGA", (t) => {
 			},
 			(error) => {
 				if (error) {
-					t.is(
-						error.message,
-						"starting a session without credentials isn't supported",
-					);
+					t.is(error.message, "starting a session without credentials isn't supported");
 					return resolve();
 				}
 				reject(Error("Unexpected success"));
@@ -51,69 +46,51 @@ test.serial("Should require an email when logging to MEGA", (t) => {
 	});
 });
 
-test.serial(
-	"Should require an email when logging to MEGA using promises",
-	(t) => {
-		return new Storage({
-			gateway: gatewayUrl,
-		}).ready.then(
-			() => {
-				throw Error("Unexpected success");
-			},
-			(error) => {
-				t.is(
-					error.message,
-					"starting a session without credentials isn't supported",
-				);
-			},
-		);
-	},
-);
+test.serial("Should require an email when logging to MEGA using promises", (t) => {
+	return new Storage({
+		gateway: gatewayUrl,
+	}).ready.then(
+		() => {
+			throw Error("Unexpected success");
+		},
+		(error) => {
+			t.is(error.message, "starting a session without credentials isn't supported");
+		},
+	);
+});
 
-test.serial(
-	"Should require an email when logging to MEGA using .login()",
-	(t) => {
-		return new Promise((resolve, reject) => {
-			const storage = new Storage({
-				autologin: false,
-				gateway: gatewayUrl,
-			});
-
-			return storage.login((error) => {
-				if (error) {
-					t.is(
-						error.message,
-						"starting a session without credentials isn't supported",
-					);
-					return resolve();
-				}
-				reject(Error("Unexpected success"));
-			});
-		});
-	},
-);
-
-test.serial(
-	"Should require an email when logging to MEGA using .login() and promises",
-	(t) => {
+test.serial("Should require an email when logging to MEGA using .login()", (t) => {
+	return new Promise((resolve, reject) => {
 		const storage = new Storage({
 			autologin: false,
 			gateway: gatewayUrl,
 		});
 
-		return storage.login().then(
-			() => {
-				throw Error("Unexpected success");
-			},
-			(error) => {
-				t.is(
-					error.message,
-					"starting a session without credentials isn't supported",
-				);
-			},
-		);
-	},
-);
+		return storage.login((error) => {
+			if (error) {
+				t.is(error.message, "starting a session without credentials isn't supported");
+				return resolve();
+			}
+			reject(Error("Unexpected success"));
+		});
+	});
+});
+
+test.serial("Should require an email when logging to MEGA using .login() and promises", (t) => {
+	const storage = new Storage({
+		autologin: false,
+		gateway: gatewayUrl,
+	});
+
+	return storage.login().then(
+		() => {
+			throw Error("Unexpected success");
+		},
+		(error) => {
+			t.is(error.message, "starting a session without credentials isn't supported");
+		},
+	);
+});
 
 test.serial("Should require valid credentials when logging to MEGA", (t) => {
 	const storage = new Storage({
@@ -206,9 +183,7 @@ test.serial("Should stream upload", async (t) => {
 });
 
 test.serial("Should stream download", async (t) => {
-	const file = storage.root.children.find(
-		(e) => e.name === "test file streams",
-	);
+	const file = storage.root.children.find((e) => e.name === "test file streams");
 	const uploadedData = testBuffer(file.size);
 	const uploadedHash = sha1(uploadedData);
 	const singleConnData = await file.downloadBuffer({
@@ -224,16 +199,11 @@ test.serial("Should stream download", async (t) => {
 
 test.serial("Should share files", (t) => {
 	return new Promise((resolve, reject) => {
-		const file = storage.root.children.find(
-			(e) => e.name === "test file buffer",
-		);
+		const file = storage.root.children.find((e) => e.name === "test file buffer");
 
 		file.link((error, link) => {
 			if (error) return reject(error);
-			t.is(
-				link,
-				"https://mega.nz/file/AAAAAAAE#AAAAAAAAAACldyOdMzqeRgAAAAAAAAAApXcjnTM6nkY",
-			);
+			t.is(link, "https://mega.nz/file/AAAAAAAE#AAAAAAAAAACldyOdMzqeRgAAAAAAAAAApXcjnTM6nkY");
 			resolve();
 		});
 	});
@@ -567,9 +537,7 @@ test.serial("Should share folders using shareFolder (promise)", async (t) => {
 
 test.serial("Should not release zalgo when using shareFolder", async (t) => {
 	return new Promise((resolve, reject) => {
-		const folder = storage.root.children.find(
-			(e) => e.name === "test folder promise",
-		);
+		const folder = storage.root.children.find((e) => e.name === "test folder promise");
 
 		let zalgoReleased = true;
 		folder.shareFolder(
@@ -614,9 +582,7 @@ test.serial("Should upload huge files in parts", async (t) => {
 });
 
 test.serial("Should download files uploaded in parts", async (t) => {
-	const file = storage.root.children.find(
-		(e) => e.name === "test file streams 2",
-	);
+	const file = storage.root.children.find((e) => e.name === "test file streams 2");
 	const downloadedData = await file.downloadBuffer();
 	t.is(downloadedData.length, file.size);
 	t.is(sha1(downloadedData), uploadedSha);
@@ -649,9 +615,7 @@ test.serial("Should stream as upload arguments", async (t) => {
 	const inputStream = new Readable({
 		read(size) {
 			const newPointer = readBytes + size;
-			this.push(
-				readBytes < dataSize ? uploadedData.slice(readBytes, newPointer) : null,
-			);
+			this.push(readBytes < dataSize ? uploadedData.slice(readBytes, newPointer) : null);
 			readBytes = newPointer;
 		},
 	});
@@ -674,9 +638,7 @@ test.serial("Should stream as upload arguments", async (t) => {
 });
 
 test.serial("Should find files using functions", (t) => {
-	const matchingFile = storage.find((e) =>
-		e.name.includes("test file streams"),
-	);
+	const matchingFile = storage.find((e) => e.name.includes("test file streams"));
 	t.is(matchingFile.size, 2097152);
 });
 
@@ -691,9 +653,7 @@ test.serial("Should find files using arrays", (t) => {
 });
 
 test.serial("Should filter files using functions", (t) => {
-	const matchingFiles = storage.filter((e) =>
-		e.name.includes("test file streams"),
-	);
+	const matchingFiles = storage.filter((e) => e.name.includes("test file streams"));
 	t.is(matchingFiles.length, 4);
 });
 
@@ -711,18 +671,12 @@ test.serial("Should filter files using arrays", (t) => {
 });
 
 test.serial("Should navigate to files using arrays", (t) => {
-	const matchingFile = storage.navigate([
-		"test folder",
-		"test folder 2",
-		"file in folder 2",
-	]);
+	const matchingFile = storage.navigate(["test folder", "test folder 2", "file in folder 2"]);
 	t.is(matchingFile.size, 16);
 });
 
 test.serial("Should navigate to files using strings", (t) => {
-	const matchingFile = storage.navigate(
-		"test folder/test folder 2/file in folder 2",
-	);
+	const matchingFile = storage.navigate("test folder/test folder 2/file in folder 2");
 	t.is(matchingFile.size, 16);
 });
 

@@ -11,9 +11,9 @@
 		"start": "node .output/server/index.mjs",
 		"preview": "vite preview",
 		"test": "vitest run",
-		"format": "biome format",
-		"lint": "biome lint",
-		"check": "biome check",
+		"format": "oxfmt",
+		"lint": "oxlint",
+		"check": "oxlint && oxfmt --check",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:push": "drizzle-kit push",
@@ -55,7 +55,6 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.4.16",
 		"@iconify-json/bxl": "^1.2.4",
 		"@iconify/tailwind4": "^1.2.3",
 		"@rolldown/plugin-babel": "^0.2.3",
@@ -71,9 +70,10 @@
 		"babel-plugin-react-compiler": "^1.0.0",
 		"dotenv": "^17.4.2",
 		"nitro": "3.0.260603-beta",
+		"oxfmt": "^0.53.0",
+		"oxlint": "^1.68.0",
 		"tsx": "^4.22.4",
 		"typescript": "^5.9.3",
-		"vite": "^8.0.16",
-		"vite-tsconfig-paths": "^6.1.1"
+		"vite": "^8.0.16"
 	}
 }

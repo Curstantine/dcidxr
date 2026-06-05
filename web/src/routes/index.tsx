@@ -1,8 +1,5 @@
 import { useDebouncer } from "@tanstack/react-pacer";
-import {
-	useSuspenseInfiniteQuery,
-	useSuspenseQuery,
-} from "@tanstack/react-query";
+import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { LucideCopy, LucideSearch } from "lucide-react";
 import { type ChangeEvent, type SubmitEvent, Suspense, useState } from "react";
@@ -58,8 +55,7 @@ function RouteComponent() {
 	return (
 		<main className="max-w-4xl mx-auto px-2">
 			<nav className="text-center py-2 text-sm sticky top-0 bg-background h-10">
-				Doujin Cafe -{" "}
-				<code className="bg-accent p-0.5 rounded">#collection</code> Index
+				Doujin Cafe - <code className="bg-accent p-0.5 rounded">#collection</code> Index
 			</nav>
 
 			<Form />
@@ -170,10 +166,9 @@ function Results() {
 	const { search, searchType } = Route.useSearch({
 		select: ({ search, searchType }) => ({ search, searchType }),
 	});
-	const { data, hasNextPage, fetchNextPage, isFetchingNextPage } =
-		useSuspenseInfiniteQuery(
-			circlesInfiniteQueryOptions({ search, searchType }),
-		);
+	const { data, hasNextPage, fetchNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(
+		circlesInfiniteQueryOptions({ search, searchType }),
+	);
 
 	const circles = data.pages.flatMap((page) => page.circles);
 	const total = data.pages[0]?.total ?? { circles: 0, releases: 0 };
@@ -245,19 +240,14 @@ function CircleLine({
 						variant="link"
 						nativeButton={false}
 						render={
-							// biome-ignore lint/a11y/useAnchorContent: children is passed by the Button
+							// oxlint-disable-next-line jsx-a11y/anchor-has-content: children is passed by the Button
 							<a href={missingLink} target="_blank" rel="noopener noreferrer" />
 						}
 					>
 						Missing
 					</Button>
 				)}
-				<Button
-					type="button"
-					size="sm"
-					variant="outline"
-					onClick={copyAllLinks}
-				>
+				<Button type="button" size="sm" variant="outline" onClick={copyAllLinks}>
 					<LucideCopy className="size-3" />
 					Copy Links
 				</Button>
@@ -265,11 +255,7 @@ function CircleLine({
 			<ul className="text-xs space-y-3 sm:space-y-0 sm:text-sm text-muted-foreground">
 				{releases.map((release) => (
 					<li key={release.id}>
-						<a
-							href={release.megaLink}
-							target="_blank"
-							rel="noopener noreferrer"
-						>
+						<a href={release.megaLink} target="_blank" rel="noopener noreferrer">
 							{release.name}
 						</a>
 					</li>

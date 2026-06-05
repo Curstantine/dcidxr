@@ -1,14 +1,7 @@
 import { PassThrough } from "stream";
 
 import API from "./api.mjs";
-import {
-	AES,
-	e64,
-	formatKey,
-	getCipher,
-	megaEncrypt,
-	unmergeKeyMac,
-} from "./crypto/index.mjs";
+import { AES, e64, formatKey, getCipher, megaEncrypt, unmergeKeyMac } from "./crypto/index.mjs";
 import File, { LABEL_NAMES } from "./file.mjs";
 import { createPromise, detectSize, streamToCb } from "./util.mjs";
 
@@ -71,10 +64,7 @@ class MutableFile extends File {
 		}
 
 		if (!opt.target) opt.target = this;
-		if (!opt.key)
-			opt.key = Buffer.from(
-				globalThis.crypto.getRandomValues(new Uint8Array(16)),
-			);
+		if (!opt.key) opt.key = Buffer.from(globalThis.crypto.getRandomValues(new Uint8Array(16)));
 
 		if (opt.key.length !== 16) {
 			throw Error("wrong key length, must be 128bit");
@@ -145,11 +135,7 @@ class MutableFile extends File {
 
 		if (
 			!(typeof opt.size === "number" && opt.size >= 0) &&
-			!(
-				source &&
-				typeof source.pipe !== "function" &&
-				typeof source.length === "number"
-			) &&
+			!(source && typeof source.pipe !== "function" && typeof source.length === "number") &&
 			!opt.allowUploadBuffering
 		) {
 			throw Error("Specify a file size or set allowUploadBuffering to true");
@@ -181,17 +167,13 @@ class MutableFile extends File {
 		const checkCallbacks = (err, type, hash, encrypter) => {
 			if (err) return returnError(err);
 			if (!hash || hash.length === 0) {
-				returnError(
-					Error("Server returned a invalid response while uploading"),
-				);
+				returnError(Error("Server returned a invalid response while uploading"));
 				return;
 			}
 
 			const errorCheck = Number(hash.toString());
 			if (errorCheck < 0) {
-				returnError(
-					Error("Server returned error " + errorCheck + " while uploading"),
-				);
+				returnError(Error("Server returned error " + errorCheck + " while uploading"));
 				return;
 			}
 
@@ -279,9 +261,7 @@ class MutableFile extends File {
 	}
 
 	_upload(opt, source, type, cb) {
-		const encrypter = opt.uploadCiphertext
-			? new PassThrough()
-			: megaEncrypt(opt.key);
+		const encrypter = opt.uploadCiphertext ? new PassThrough() : megaEncrypt(opt.key);
 
 		let stream = encrypter;
 
@@ -322,9 +302,7 @@ class MutableFile extends File {
 				buffer = Buffer.concat([buffer, Buffer.alloc(rest)]);
 			}
 
-			const encrypter = opt.handle
-				? getCipher(opt.key)
-				: new AES(opt.key.slice(0, 16));
+			const encrypter = opt.handle ? getCipher(opt.key) : new AES(opt.key.slice(0, 16));
 			encrypter.encryptCBC(buffer);
 
 			const stream = new PassThrough();
@@ -353,8 +331,7 @@ class MutableFile extends File {
 			getUrlRequest.h = opt.handle;
 		}
 
-		const initialChunkSize =
-			type === 0 ? opt.initialChunkSize || 128 * 1024 : size;
+		const initialChunkSize = type === 0 ? opt.initialChunkSize || 128 * 1024 : size;
 		const chunkSizeIncrement = opt.chunkSizeIncrement || 128 * 1024;
 		const maxChunkSize = opt.maxChunkSize || 1024 * 1024;
 		const maxConnections = opt.maxConnections || 4;
@@ -383,9 +360,7 @@ class MutableFile extends File {
 				remainingBuffer.copy(uploadBuffer);
 				chunkPos = Math.min(remainingBuffer.length, chunkSize);
 				remainingBuffer =
-					remainingBuffer.length > chunkSize
-						? remainingBuffer.slice(chunkSize)
-						: null;
+					remainingBuffer.length > chunkSize ? remainingBuffer.slice(chunkSize) : null;
 			}
 
 			// It happens when the remaining buffer contains the entire chunk
@@ -414,9 +389,7 @@ class MutableFile extends File {
 					})
 					.then((response) => {
 						if (response.status !== 200) {
-							throw Error(
-								"MEGA returned a " + response.status + " status code",
-							);
+							throw Error("MEGA returned a " + response.status + " status code");
 						}
 						return response.arrayBuffer();
 					})
@@ -487,9 +460,7 @@ class MutableFile extends File {
 			if (size && sizeCheck !== size) {
 				stream.emit(
 					"error",
-					Error(
-						"Specified data size does not match: " + size + " !== " + sizeCheck,
-					),
+					Error("Specified data size does not match: " + size + " !== " + sizeCheck),
 				);
 			}
 		});
@@ -617,13 +588,10 @@ class MutableFile extends File {
 		const newAttributes = MutableFile.packAttributes(this.attributes);
 		getCipher(this.key).encryptCBC(newAttributes);
 
-		this.api.request(
-			{ a: "a", n: this.nodeId, at: e64(newAttributes) },
-			(error) => {
-				this.parseAttributes(this.attributes);
-				cb(error);
-			},
-		);
+		this.api.request({ a: "a", n: this.nodeId, at: e64(newAttributes) }, (error) => {
+			this.parseAttributes(this.attributes);
+			cb(error);
+		});
 
 		return promise;
 	}
@@ -639,15 +607,8 @@ class MutableFile extends File {
 
 	setLabel(label, cb) {
 		if (typeof label === "string") label = LABEL_NAMES.indexOf(label);
-		if (
-			typeof label !== "number" ||
-			Math.floor(label) !== label ||
-			label < 0 ||
-			label > 7
-		) {
-			throw Error(
-				"label must be a integer between 0 and 7 or a valid label name",
-			);
+		if (typeof label !== "number" || Math.floor(label) !== label || label < 0 || label > 7) {
+			throw Error("label must be a integer between 0 and 7 or a valid label name");
 		}
 
 		return this.setAttributes(
@@ -795,13 +756,10 @@ class MutableFile extends File {
 	importFile(sharedFile, originalCb) {
 		const [cb, promise] = createPromise(originalCb);
 
-		if (!this.directory)
-			throw Error("importFile can only be called on directories");
+		if (!this.directory) throw Error("importFile can only be called on directories");
 		if (typeof sharedFile === "string") sharedFile = File.fromURL(sharedFile);
 		if (!(sharedFile instanceof File))
-			throw Error(
-				"First argument of importFile should be a File or a URL string",
-			);
+			throw Error("First argument of importFile should be a File or a URL string");
 
 		if (!sharedFile.key) {
 			cb(Error("Can't import files without encryption keys"));
@@ -896,9 +854,7 @@ function makeCryptoRequest(storage, sources, shares) {
 
 function selfAndChildren(node) {
 	return [node].concat(
-		(node.children || [])
-			.map(selfAndChildren)
-			.reduce((arr, el) => arr.concat(el), []),
+		(node.children || []).map(selfAndChildren).reduce((arr, el) => arr.concat(el), []),
 	);
 }
 

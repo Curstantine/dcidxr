@@ -50,9 +50,7 @@ function RouteComponent() {
 				setEmailError(result.error.message ?? "Invalid email or password.");
 			}
 		} catch (err) {
-			setEmailError(
-				err instanceof Error ? err.message : "An unexpected error occurred.",
-			);
+			setEmailError(err instanceof Error ? err.message : "An unexpected error occurred.");
 		} finally {
 			setIsLoading(false);
 		}
@@ -67,10 +65,7 @@ function RouteComponent() {
 			)}
 			<h1 className="text-2xl mb-6 font-medium">Login</h1>
 
-			<form
-				onSubmit={handleEmailLogin}
-				className="w-full flex flex-col gap-3 mb-6"
-			>
+			<form onSubmit={handleEmailLogin} className="w-full flex flex-col gap-3 mb-6">
 				<Input
 					name="email"
 					type="email"
@@ -92,9 +87,7 @@ function RouteComponent() {
 				{emailError && (
 					<p className="text-sm text-red-500 dark:text-red-400">{emailError}</p>
 				)}
-				{error && (
-					<p className="text-sm text-red-500 dark:text-red-400">{error}</p>
-				)}
+				{error && <p className="text-sm text-red-500 dark:text-red-400">{error}</p>}
 				<Button type="submit" size="lg" disabled={isLoading}>
 					{isLoading ? "Signing in..." : "Sign in with Email"}
 				</Button>
@@ -106,12 +99,7 @@ function RouteComponent() {
 				<hr className="flex-1 border-border" />
 			</div>
 
-			<Button
-				type="button"
-				size="lg"
-				variant="discord"
-				onClick={handleDiscordLogin}
-			>
+			<Button type="button" size="lg" variant="discord" onClick={handleDiscordLogin}>
 				<span aria-hidden className="iconify bxl--discord-alt size-6" />
 				Sign in with Discord
 			</Button>

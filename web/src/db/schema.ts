@@ -1,23 +1,8 @@
 import { sql } from "drizzle-orm";
-import {
-	customType,
-	index,
-	integer,
-	pgEnum,
-	pgTable,
-	serial,
-	text,
-} from "drizzle-orm/pg-core";
+import { customType, index, integer, pgEnum, pgTable, serial, text } from "drizzle-orm/pg-core";
 
-export const circleStatusEnum = pgEnum("circle_status", [
-	"missing",
-	"incomplete",
-	"complete",
-]);
-export const serverMetaKeyEnum = pgEnum("server_meta_key", [
-	"last_crawled",
-	"last_indexed",
-]);
+export const circleStatusEnum = pgEnum("circle_status", ["missing", "incomplete", "complete"]);
+export const serverMetaKeyEnum = pgEnum("server_meta_key", ["last_crawled", "last_indexed"]);
 const tsvector = customType<{ data: string }>({
 	dataType() {
 		return "tsvector";

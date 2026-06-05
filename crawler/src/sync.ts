@@ -4,16 +4,8 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { relations } from "../../web/src/db/relations.ts";
 import { circle, release, serverMeta } from "../../web/src/db/schema.ts";
 import { readJsonFile, resolveInputPath } from "./utils/files.ts";
-import {
-	dedupeByKey,
-	mapWithConcurrency,
-	normalizeString,
-} from "./utils/index.ts";
-import type {
-	DbCircleStatus,
-	FetchGroup,
-	SyncInputPayload,
-} from "./utils/types.ts";
+import { dedupeByKey, mapWithConcurrency, normalizeString } from "./utils/index.ts";
+import type { DbCircleStatus, FetchGroup, SyncInputPayload } from "./utils/types.ts";
 
 import "./utils/prelude.ts";
 
@@ -38,10 +30,7 @@ function normalizeStatus(status: string | null | undefined): DbCircleStatus {
 	}
 }
 
-function buildStatusText(
-	group: FetchGroup,
-	mappedStatus: DbCircleStatus,
-): string {
+function buildStatusText(group: FetchGroup, mappedStatus: DbCircleStatus): string {
 	const sourceStatus = normalizeString(group.status);
 	const statusMeta = normalizeString(group.statusMeta);
 
@@ -87,10 +76,7 @@ function normalizeGroup(group: FetchGroup): FetchGroup {
 		: [];
 
 	const releases = Array.isArray(group.releases)
-		? dedupeByKey(
-				group.releases,
-				(item) => `${item.name}::${item.link}::${item.sizeBytes}`,
-			)
+		? dedupeByKey(group.releases, (item) => `${item.name}::${item.link}::${item.sizeBytes}`)
 		: [];
 
 	return {
@@ -141,9 +127,7 @@ export async function sync(inputArg?: string): Promise<void> {
 		circleIdsByName.set(existingCircle.name, existingCircle.id);
 	}
 
-	const missingCircleNames = circleNames.filter(
-		(name) => !circleIdsByName.has(name),
-	);
+	const missingCircleNames = circleNames.filter((name) => !circleIdsByName.has(name));
 
 	if (missingCircleNames.length > 0) {
 		const insertedCircles = await db
@@ -170,142 +154,116 @@ export async function sync(inputArg?: string): Promise<void> {
 	let startedCircles = 0;
 	const totalCircles = groups.length;
 
-	const syncResults = await mapWithConcurrency(
-		groups,
-		DEFAULT_CONCURRENCY,
-		async (group) => {
-			startedCircles += 1;
-			console.log(
-				`[${startedCircles}/${totalCircles}] Syncing ${group.circle} (${group.releases.length} releases)`,
-			);
+	const syncResults = await mapWithConcurrency(groups, DEFAULT_CONCURRENCY, async (group) => {
+		startedCircles += 1;
+		console.log(
+			`[${startedCircles}/${totalCircles}] Syncing ${group.circle} (${group.releases.length} releases)`,
+		);
 
-			const circleId = circleIdsByName.get(group.circle);
+		const circleId = circleIdsByName.get(group.circle);
 
-			if (!circleId) {
-				throw new Error(
-					`Failed to resolve database circle id for: ${group.circle}`,
-				);
+		if (!circleId) {
+			throw new Error(`Failed to resolve database circle id for: ${group.circle}`);
+		}
+
+		const mappedStatus = normalizeStatus(group.status);
+		const statusText = buildStatusText(group, mappedStatus);
+
+		const opCounts = await db.transaction(async (tx) => {
+			await tx
+				.update(circle)
+				.set({
+					name: group.circle,
+					megaLinks: group.links,
+					status: mappedStatus,
+					statusText,
+					missingLink: group.missingLink ?? null,
+				})
+				.where(eq(circle.id, circleId));
+
+			// Fetch existing releases for this circle
+			const existingReleases = await tx
+				.select()
+				.from(release)
+				.where(eq(release.circleId, circleId));
+
+			// Create a map of existing releases by megaLink for quick lookup
+			const existingByLink = new Map(existingReleases.map((r) => [r.megaLink, r]));
+
+			// Create a set of incoming release links
+			const incomingLinks = new Set(group.releases.map((r) => r.link));
+
+			// Determine what to delete (exists in DB but not in incoming)
+			const toDelete = existingReleases
+				.filter((r) => !incomingLinks.has(r.megaLink))
+				.map((r) => r.id);
+
+			// Determine what to insert or update
+			const toInsert = [];
+			const toUpdate = [];
+
+			for (const item of group.releases) {
+				const existing = existingByLink.get(item.link);
+				const sizeMb = bytesToMegabytes(item.sizeBytes);
+
+				if (!existing) {
+					// New release
+					toInsert.push({
+						name: item.name,
+						sizeMb,
+						megaLink: item.link,
+						circleId,
+					});
+				} else if (existing.name !== item.name || existing.sizeMb !== sizeMb) {
+					// Existing release with changes
+					toUpdate.push({
+						id: existing.id,
+						name: item.name,
+						sizeMb,
+					});
+				}
 			}
 
-			const mappedStatus = normalizeStatus(group.status);
-			const statusText = buildStatusText(group, mappedStatus);
+			// Perform deletions
+			if (toDelete.length > 0) {
+				await tx.delete(release).where(inArray(release.id, toDelete));
+			}
 
-			const opCounts = await db.transaction(async (tx) => {
+			// Perform insertions
+			if (toInsert.length > 0) {
+				await tx.insert(release).values(toInsert);
+			}
+
+			// Perform updates
+			for (const update of toUpdate) {
 				await tx
-					.update(circle)
-					.set({
-						name: group.circle,
-						megaLinks: group.links,
-						status: mappedStatus,
-						statusText,
-						missingLink: group.missingLink ?? null,
-					})
-					.where(eq(circle.id, circleId));
-
-				// Fetch existing releases for this circle
-				const existingReleases = await tx
-					.select()
-					.from(release)
-					.where(eq(release.circleId, circleId));
-
-				// Create a map of existing releases by megaLink for quick lookup
-				const existingByLink = new Map(
-					existingReleases.map((r) => [r.megaLink, r]),
-				);
-
-				// Create a set of incoming release links
-				const incomingLinks = new Set(group.releases.map((r) => r.link));
-
-				// Determine what to delete (exists in DB but not in incoming)
-				const toDelete = existingReleases
-					.filter((r) => !incomingLinks.has(r.megaLink))
-					.map((r) => r.id);
-
-				// Determine what to insert or update
-				const toInsert = [];
-				const toUpdate = [];
-
-				for (const item of group.releases) {
-					const existing = existingByLink.get(item.link);
-					const sizeMb = bytesToMegabytes(item.sizeBytes);
-
-					if (!existing) {
-						// New release
-						toInsert.push({
-							name: item.name,
-							sizeMb,
-							megaLink: item.link,
-							circleId,
-						});
-					} else if (
-						existing.name !== item.name ||
-						existing.sizeMb !== sizeMb
-					) {
-						// Existing release with changes
-						toUpdate.push({
-							id: existing.id,
-							name: item.name,
-							sizeMb,
-						});
-					}
-				}
-
-				// Perform deletions
-				if (toDelete.length > 0) {
-					await tx.delete(release).where(inArray(release.id, toDelete));
-				}
-
-				// Perform insertions
-				if (toInsert.length > 0) {
-					await tx.insert(release).values(toInsert);
-				}
-
-				// Perform updates
-				for (const update of toUpdate) {
-					await tx
-						.update(release)
-						.set({ name: update.name, sizeMb: update.sizeMb })
-						.where(eq(release.id, update.id));
-				}
-
-				return {
-					insertCount: toInsert.length,
-					updateCount: toUpdate.length,
-					deleteCount: toDelete.length,
-				};
-			});
+					.update(release)
+					.set({ name: update.name, sizeMb: update.sizeMb })
+					.where(eq(release.id, update.id));
+			}
 
 			return {
-				releaseCount: group.releases.length,
-				errorCount: group.errors.length,
-				insertCount: opCounts.insertCount,
-				updateCount: opCounts.updateCount,
-				deleteCount: opCounts.deleteCount,
+				insertCount: toInsert.length,
+				updateCount: toUpdate.length,
+				deleteCount: toDelete.length,
 			};
-		},
-	);
+		});
+
+		return {
+			releaseCount: group.releases.length,
+			errorCount: group.errors.length,
+			insertCount: opCounts.insertCount,
+			updateCount: opCounts.updateCount,
+			deleteCount: opCounts.deleteCount,
+		};
+	});
 
 	const syncedCircles = syncResults.length;
-	const syncedReleases = syncResults.reduce(
-		(total, result) => total + result.releaseCount,
-		0,
-	);
-	const totalErrors = syncResults.reduce(
-		(total, result) => total + result.errorCount,
-		0,
-	);
-	const totalInserts = syncResults.reduce(
-		(total, result) => total + result.insertCount,
-		0,
-	);
-	const totalUpdates = syncResults.reduce(
-		(total, result) => total + result.updateCount,
-		0,
-	);
-	const totalDeletes = syncResults.reduce(
-		(total, result) => total + result.deleteCount,
-		0,
-	);
+	const syncedReleases = syncResults.reduce((total, result) => total + result.releaseCount, 0);
+	const totalErrors = syncResults.reduce((total, result) => total + result.errorCount, 0);
+	const totalInserts = syncResults.reduce((total, result) => total + result.insertCount, 0);
+	const totalUpdates = syncResults.reduce((total, result) => total + result.updateCount, 0);
+	const totalDeletes = syncResults.reduce((total, result) => total + result.deleteCount, 0);
 
 	await db
 		.insert(serverMeta)
@@ -315,9 +273,7 @@ export async function sync(inputArg?: string): Promise<void> {
 			set: { value: new Date().toISOString() },
 		});
 
-	console.log(
-		`Synced ${syncedCircles} circles and ${syncedReleases} releases from ${inputPath}`,
-	);
+	console.log(`Synced ${syncedCircles} circles and ${syncedReleases} releases from ${inputPath}`);
 	console.log(
 		`  Operations: ${totalInserts} inserted, ${totalUpdates} updated, ${totalDeletes} deleted${totalErrors > 0 ? ` (${totalErrors} fetch errors recorded in source JSON)` : ""}`,
 	);
