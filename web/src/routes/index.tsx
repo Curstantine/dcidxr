@@ -67,13 +67,13 @@ function RouteComponent() {
 						type="button"
 						size="sm"
 						variant="ghost"
+						aria-label="Logout"
 						onClick={async () => {
 							await authClient.signOut();
 							router.navigate({ to: "/auth/login" });
 						}}
 					>
-						<LucideLogOut className="size-3" />
-						Logout
+						<LucideLogOut className="size-3.5" />
 					</Button>
 				</div>
 			</nav>
