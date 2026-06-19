@@ -68,7 +68,6 @@ export const fetchCircles = createServerFn({ method: "GET" })
 			with: {
 				releases: {
 					columns: { id: true, name: true, sizeMb: true, megaLink: true },
-					// oxlint-disable-next-line typescript/no-banned-types: I don't know...
 					...(clause.with?.releases ?? ({} as unknown as {})),
 				},
 			},

@@ -1,7 +1,7 @@
 import { useDebouncer } from "@tanstack/react-pacer";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
-import { LucideCopy, LucideLogOut, LucideSearch } from "lucide-react";
+import { LucideCopy, LucideGitBranch, LucideLogOut, LucideSearch } from "lucide-react";
 import { type ChangeEvent, type SubmitEvent, Suspense, useState } from "react";
 import { toast } from "sonner";
 
@@ -60,7 +60,7 @@ function RouteComponent() {
 			<nav className="flex items-center justify-between py-2 text-sm sticky top-0 bg-background h-10">
 				<div className="flex-1" />
 				<span>
-					Doujin Cafe - <code className="bg-accent p-0.5 rounded">#collection</code> Index
+					Doujin Cafe - <code className="bg-accent p-0.5 rounded">#collection</code> index
 				</span>
 				<div className="flex-1 flex justify-end">
 					<Button
@@ -88,8 +88,13 @@ function RouteComponent() {
 				<FooterInfo />
 
 				<div className="flex-1" />
-				<a href={env.VITE_SOURCE_URL} target="_blank" rel="noopener noreferrer">
-					#source
+				<a
+					href={env.VITE_SOURCE_URL}
+					target="_blank"
+					rel="noopener noreferrer"
+					aria-label="Source"
+				>
+					<LucideGitBranch className="size-4" />
 				</a>
 			</footer>
 		</main>
