@@ -44,7 +44,6 @@ The application will be available at `http://localhost:3000`.
 - `pnpm build` - Build for production
 - `pnpm start` - Start production server
 - `pnpm preview` - Preview production build
-- `pnpm test` - Run tests
 - `pnpm format` - Format code with oxfmt
 - `pnpm lint` - Lint code with oxlint
 - `pnpm check` - Run format and lint checks
