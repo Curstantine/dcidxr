@@ -248,7 +248,7 @@ function CircleLine({
 }: FetchCirclesShape["circles"][number]) {
 	const copyAllLinks = () => {
 		navigator.clipboard.writeText(megaLinks.join("\n"));
-		toast("Copied all links to clipboard");
+		toast.success("Copied all links to clipboard");
 	};
 
 	return (

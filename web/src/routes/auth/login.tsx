@@ -1,11 +1,12 @@
+import { Form } from "@base-ui/react/form";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { type SubmitEvent, useState } from "react";
+import { useState } from "react";
 import z from "zod";
-import { toast } from "sonner";
 
 import { authClient } from "@/auth/client";
 import { getSession } from "@/auth/func";
 import { Button } from "@/components/button";
+import { Field, FieldError, FieldSeparator } from "@/components/field";
 import { Input } from "@/components/input";
 
 export const Route = createFileRoute("/auth/login")({
@@ -21,10 +22,16 @@ export const Route = createFileRoute("/auth/login")({
 	component: RouteComponent,
 });
 
+const loginSchema = z.object({
+	email: z.email("Enter a valid email address"),
+	password: z.string().min(1, "Password is required"),
+});
+
+type FieldErrors = Partial<Record<keyof z.infer<typeof loginSchema>, string[] | undefined>>;
+
 function RouteComponent() {
 	const { hasAccess, error } = Route.useSearch();
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
+	const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 	const [isLoading, setIsLoading] = useState(false);
 
 	const handleDiscordLogin = async () => {
@@ -34,22 +41,32 @@ function RouteComponent() {
 		});
 	};
 
-	const handleEmailLogin = async (e: SubmitEvent) => {
-		e.preventDefault();
+	const handleEmailLogin = async (formValues: Form.Values) => {
+		const parsed = loginSchema.safeParse(formValues);
+		if (!parsed.success) {
+			setFieldErrors(z.flattenError(parsed.error).fieldErrors);
+			return;
+		}
+
 		setIsLoading(true);
+		setFieldErrors({});
 
 		try {
 			const result = await authClient.signIn.email({
-				email,
-				password,
+				email: parsed.data.email,
+				password: parsed.data.password,
 				callbackURL: "/",
 			});
 
 			if (result.error) {
-				toast.error(result.error.message ?? "Invalid email or password.");
+				setFieldErrors({
+					password: [result.error.message ?? "Invalid email or password."],
+				});
 			}
 		} catch (err) {
-			toast.error(err instanceof Error ? err.message : "An unexpected error occurred.");
+			setFieldErrors({
+				password: [err instanceof Error ? err.message : "An unexpected error occurred."],
+			});
 		} finally {
 			setIsLoading(false);
 		}
@@ -64,36 +81,41 @@ function RouteComponent() {
 			)}
 			<h1 className="text-2xl mb-6 font-medium">Login</h1>
 
-			<form onSubmit={handleEmailLogin} className="w-full flex flex-col gap-3 mb-6">
-				<Input
-					name="email"
-					type="email"
-					placeholder="Email"
-					value={email}
-					onChange={(e) => setEmail((e.target as HTMLInputElement).value)}
-					required
-					autoComplete="email"
-				/>
-				<Input
-					name="password"
-					type="password"
-					placeholder="Password"
-					value={password}
-					onChange={(e) => setPassword((e.target as HTMLInputElement).value)}
-					required
-					autoComplete="current-password"
-				/>
+			<Form
+				errors={fieldErrors}
+				onFormSubmit={handleEmailLogin}
+				className="w-full flex flex-col gap-3 mb-6"
+			>
+				<Field>
+					<Input
+						id="email"
+						name="email"
+						type="email"
+						placeholder="Email"
+						autoComplete="email"
+					/>
+					<FieldError />
+				</Field>
+
+				<Field>
+					<Input
+						id="password"
+						name="password"
+						type="password"
+						placeholder="Password"
+						autoComplete="current-password"
+					/>
+					<FieldError />
+				</Field>
+
 				{error && <p className="text-sm text-red-500 dark:text-red-400">{error}</p>}
+
 				<Button type="submit" size="lg" disabled={isLoading}>
 					{isLoading ? "Signing in..." : "Sign in with Email"}
 				</Button>
-			</form>
+			</Form>
 
-			<div className="flex items-center gap-3 w-full mb-6">
-				<hr className="flex-1 border-border" />
-				<span className="text-xs text-muted-foreground">or</span>
-				<hr className="flex-1 border-border" />
-			</div>
+			<FieldSeparator className="w-full mb-6 mt-1">or</FieldSeparator>
 
 			<Button type="button" size="lg" variant="discord" onClick={handleDiscordLogin}>
 				<span aria-hidden className="iconify bxl--discord-alt size-6" />
