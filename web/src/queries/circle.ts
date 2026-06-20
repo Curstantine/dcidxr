@@ -4,6 +4,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { sql } from "drizzle-orm";
 import z from "zod";
 
+import { ensureSession } from "@/auth/func";
 import { db } from "@/db";
 
 const PAGE_SIZE = 100;
@@ -20,6 +21,7 @@ export const fetchCirclesInput = z.object({
 export const fetchCircles = createServerFn({ method: "GET" })
 	.validator(fetchCirclesInput)
 	.handler(async ({ data: { search, cursor, searchType } }) => {
+		await ensureSession();
 		const sv = takeIf(search, (x) => x !== undefined && x !== "") ?? undefined;
 		const svs = takeMapped(sv, (x) => `%${x}%`) ?? undefined;
 
