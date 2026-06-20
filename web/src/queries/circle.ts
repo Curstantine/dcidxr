@@ -18,7 +18,7 @@ export const fetchCirclesInput = z.object({
 // When using the query as a prepared statement with any values being passed into the where clause,
 // the query will not return any results.
 export const fetchCircles = createServerFn({ method: "GET" })
-	.inputValidator(fetchCirclesInput)
+	.validator(fetchCirclesInput)
 	.handler(async ({ data: { search, cursor, searchType } }) => {
 		const sv = takeIf(search, (x) => x !== undefined && x !== "") ?? undefined;
 		const svs = takeMapped(sv, (x) => `%${x}%`) ?? undefined;
