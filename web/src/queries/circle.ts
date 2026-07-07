@@ -30,13 +30,13 @@ export const fetchCircles = createServerFn({ method: "GET" })
 		switch (searchType) {
 			case "circle":
 				clause = {
-					where: { name: { ilike: svs } },
+					where: { name: { like: svs } },
 				};
 				break;
 			case "release":
 				clause = {
-					where: { releases: { name: { ilike: svs } } },
-					with: { releases: { where: { name: { ilike: svs } } } },
+					where: { releases: { name: { like: svs } } },
+					with: { releases: { where: { name: { like: svs } } } },
 				};
 				break;
 			case "all": {
@@ -45,7 +45,7 @@ export const fetchCircles = createServerFn({ method: "GET" })
 					clause = {
 						where: {
 							RAW: (t) =>
-								sql`${t.searchVector} @@ websearch_to_tsquery('simple', ${sv})`,
+								sql`${t.id} IN (SELECT rowid FROM circle_fts WHERE circle_fts MATCH ${sv})`,
 						},
 					};
 

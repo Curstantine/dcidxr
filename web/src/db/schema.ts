@@ -1,44 +1,43 @@
 import { sql } from "drizzle-orm";
-import { customType, index, integer, pgEnum, pgTable, serial, text } from "drizzle-orm/pg-core";
+import { customType, index, integer, int, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-export const circleStatusEnum = pgEnum("circle_status", ["missing", "incomplete", "complete"]);
-export const serverMetaKeyEnum = pgEnum("server_meta_key", ["last_crawled", "last_indexed"]);
-const tsvector = customType<{ data: string }>({
+const jsonArray = customType<{ data: string[]; driverData: string }>({
 	dataType() {
-		return "tsvector";
+		return "text";
+	},
+	toDriver(value: string[]): string {
+		return JSON.stringify(value);
+	},
+	fromDriver(value: string): string[] {
+		return JSON.parse(value);
 	},
 });
 
-export const circle = pgTable(
+export const circle = sqliteTable(
 	"circle",
 	{
-		id: serial("id").primaryKey(),
+		id: int("id").primaryKey({ autoIncrement: true }),
 		name: text("name").notNull(),
-		megaLinks: text("mega_links")
-			.array()
+		megaLinks: jsonArray("mega_links")
 			.notNull()
-			.default(sql`ARRAY[]::text[]`),
-		status: circleStatusEnum("status").notNull().default("incomplete"),
+			.default(sql`'[]'`),
+		status: text("status", { enum: ["missing", "incomplete", "complete"] })
+			.notNull()
+			.default("incomplete"),
 		statusText: text("status_text").notNull().default("Missing releases"),
 		missingLink: text("missing_link"),
-		searchVector: tsvector("search_vector")
-			.notNull()
-			.default(sql`''::tsvector`),
 	},
-	(table) => [
-		index("circles_name_idx").on(table.name),
-		index("circles_search_vector_idx").using("gin", table.searchVector),
-	],
+	(table) => [index("circles_name_idx").on(table.name)],
 );
 
-export const release = pgTable(
+export const release = sqliteTable(
 	"release",
 	{
-		id: serial("id").primaryKey(),
+		id: int("id").primaryKey({ autoIncrement: true }),
 		name: text("name").notNull(),
 		sizeMb: integer("size_mb").notNull(),
 		megaLink: text("mega_link").notNull(),
-		circleId: integer("circle_id")
+		circleId: int("circle_id")
 			.notNull()
 			.references(() => circle.id, { onDelete: "cascade" }),
 	},
@@ -48,15 +47,15 @@ export const release = pgTable(
 	],
 );
 
-export const track = pgTable(
+export const track = sqliteTable(
 	"track",
 	{
-		id: serial("id").primaryKey(),
+		id: int("id").primaryKey({ autoIncrement: true }),
 		name: text("name").notNull(),
-		circleId: integer("circle_id")
+		circleId: int("circle_id")
 			.notNull()
 			.references(() => circle.id, { onDelete: "cascade" }),
-		releaseId: integer("release_id")
+		releaseId: int("release_id")
 			.notNull()
 			.references(() => release.id, { onDelete: "cascade" }),
 	},
@@ -66,8 +65,8 @@ export const track = pgTable(
 	],
 );
 
-export const serverMeta = pgTable("server_meta", {
-	key: serverMetaKeyEnum("key").primaryKey(),
+export const serverMeta = sqliteTable("server_meta", {
+	key: text("key", { enum: ["last_crawled", "last_indexed"] }).primaryKey(),
 	value: text("value").notNull(),
 });
 

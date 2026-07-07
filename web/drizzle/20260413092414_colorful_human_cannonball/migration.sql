@@ -1,1 +1,0 @@
-ALTER TABLE "circle" DROP COLUMN "last_updated";

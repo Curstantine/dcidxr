@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
 import { config } from "dotenv";
 
 import { relations } from "../src/db/relations.ts";
@@ -8,12 +9,17 @@ import * as schema from "../src/db/schema.ts";
 
 config({ path: [".env.local", ".env"] });
 
-if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
+if (!process.env.TURSO_DATABASE_URL) throw new Error("TURSO_DATABASE_URL is not set");
 
-const db = drizzle(process.env.DATABASE_URL, { relations });
+const client = createClient({
+	url: process.env.TURSO_DATABASE_URL,
+	authToken: process.env.TURSO_AUTH_TOKEN,
+});
+
+const db = drizzle({ client, relations });
 
 const auth = betterAuth({
-	database: drizzleAdapter(db, { provider: "pg", schema }),
+	database: drizzleAdapter(db, { provider: "sqlite", schema }),
 	emailAndPassword: {
 		enabled: true,
 		disableSignUp: false,

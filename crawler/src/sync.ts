@@ -1,5 +1,6 @@
 import { eq, inArray } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
 
 import { relations } from "../../web/src/db/relations.ts";
 import { circle, release, serverMeta } from "../../web/src/db/schema.ts";
@@ -9,11 +10,20 @@ import type { DbCircleStatus, FetchGroup, SyncInputPayload } from "./utils/types
 
 import "./utils/prelude.ts";
 
-if (!process.env.DATABASE_URL) {
-	throw new Error("[drizzle]: DATABASE_URL is not set");
+if (!process.env.TURSO_DATABASE_URL) {
+	throw new Error("[drizzle]: TURSO_DATABASE_URL is not set");
 }
 
-const db = drizzle(process.env.DATABASE_URL, { relations });
+if (!process.env.TURSO_AUTH_TOKEN) {
+	throw new Error("[drizzle]: TURSO_AUTH_TOKEN is not set");
+}
+
+const client = createClient({
+	url: process.env.TURSO_DATABASE_URL,
+	authToken: process.env.TURSO_AUTH_TOKEN,
+});
+
+const db = drizzle({ client, relations });
 const DEFAULT_CONCURRENCY = 8;
 
 function normalizeStatus(status: string | null | undefined): DbCircleStatus {
@@ -259,11 +269,11 @@ export async function sync(inputArg?: string): Promise<void> {
 	});
 
 	const syncedCircles = syncResults.length;
-	const syncedReleases = syncResults.reduce((total, result) => total + result.releaseCount, 0);
-	const totalErrors = syncResults.reduce((total, result) => total + result.errorCount, 0);
-	const totalInserts = syncResults.reduce((total, result) => total + result.insertCount, 0);
-	const totalUpdates = syncResults.reduce((total, result) => total + result.updateCount, 0);
-	const totalDeletes = syncResults.reduce((total, result) => total + result.deleteCount, 0);
+	const syncedReleases = syncResults.reduce((t, r) => t + r.releaseCount, 0);
+	const totalErrors = syncResults.reduce((t, r) => t + r.errorCount, 0);
+	const totalInserts = syncResults.reduce((t, r) => t + r.insertCount, 0);
+	const totalUpdates = syncResults.reduce((t, r) => t + r.updateCount, 0);
+	const totalDeletes = syncResults.reduce((t, r) => t + r.deleteCount, 0);
 
 	await db
 		.insert(serverMeta)

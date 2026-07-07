@@ -1,1 +1,0 @@
-CREATE INDEX "circles_search_vector_idx" ON "circle" USING gin ("search_vector");

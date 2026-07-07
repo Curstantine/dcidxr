@@ -1,6 +1,12 @@
-import { drizzle } from "drizzle-orm/node-postgres";
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
 
 import { relations } from "@/db/relations";
 import { env } from "@/env";
 
-export const db = drizzle(env.DATABASE_URL, { relations });
+const client = createClient({
+	url: env.TURSO_DATABASE_URL,
+	authToken: env.TURSO_AUTH_TOKEN,
+});
+
+export const db = drizzle({ client, relations });
