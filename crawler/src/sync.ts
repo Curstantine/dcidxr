@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
 
@@ -136,8 +136,21 @@ export async function sync(inputArg?: string): Promise<void> {
 				}
 			}
 		});
+
 		console.log("---------- CHUNK OVER ----------\n");
 	}
+
+	console.log("Rebuilding FTS indexes...");
+	await db.run(sql`DELETE FROM circle_fts`);
+	await db.run(sql`
+		INSERT INTO circle_fts(circle_id, circle_name, content)
+		SELECT
+			c.id,
+			c.name,
+			COALESCE((SELECT GROUP_CONCAT(r.name, ' ') FROM release r WHERE r.circle_id = c.id), '') || ' ' ||
+			COALESCE((SELECT GROUP_CONCAT(t.name, ' ') FROM track t WHERE t.circle_id = c.id), '')
+		FROM circle c
+	`);
 
 	const rn = new Date().toISOString();
 	await db

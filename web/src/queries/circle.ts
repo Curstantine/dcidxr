@@ -30,24 +30,33 @@ export const fetchCircles = createServerFn({ method: "GET" })
 		switch (searchType) {
 			case "circle":
 				clause = {
-					where: { name: { like: svs } },
+					where: { name: { ilike: svs } },
 				};
 				break;
 			case "release":
 				clause = {
-					where: { releases: { name: { like: svs } } },
-					with: { releases: { where: { name: { like: svs } } } },
+					where: { releases: { name: { ilike: svs } } },
+					with: { releases: { where: { name: { ilike: svs } } } },
 				};
 				break;
 			case "all": {
 				if (sv === undefined) clause = {};
-				else
+				else {
+					// FTS5 prefix search: split input into words, append * to each for partial matching.
+					const ftsQuery = sv
+						.replace(/[^\w\s]/g, "")
+						.trim()
+						.split(/\s+/)
+						.filter(Boolean)
+						.map((w) => `${w}*`)
+						.join(" ");
+
 					clause = {
 						where: {
-							RAW: (t) =>
-								sql`${t.id} IN (SELECT rowid FROM circle_fts WHERE circle_fts MATCH ${sv})`,
+							RAW: sql`id IN (SELECT circle_id FROM circle_fts WHERE circle_fts MATCH ${ftsQuery})`,
 						},
 					};
+				}
 
 				break;
 			}
