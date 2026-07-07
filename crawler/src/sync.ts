@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
 
 import "./utils/prelude.ts";
-import { bToMB, chunkIter, dedupeByKey } from "./utils/index.ts";
+import { bToMB, chunkIter, dedupeByKey, mapWithConcurrency } from "./utils/index.ts";
 import { readJsonFile, resolveInputPath } from "./utils/files.ts";
 import { type FetchGroup, type SyncInputPayload } from "./utils/types.ts";
 import { buildStatusText, normalizeStatus, normalizeString } from "./utils/strings.ts";
@@ -27,6 +27,7 @@ const client = createClient({
 const db = drizzle({ client, relations });
 
 const CHUNK_SIZE = 100;
+const SYNC_CONCURRENCY = 16;
 
 export async function sync(inputArg?: string): Promise<void> {
 	const path = resolveInputPath(inputArg, "dist/releases.json");
@@ -82,63 +83,60 @@ export async function sync(inputArg?: string): Promise<void> {
 	let dCount = 0,
 		iCount = 0,
 		uCount = 0;
+	let processedCount = 0;
 
-	for (const chunk of chunkIter(circles, Math.floor(CHUNK_SIZE / 2))) {
+	await mapWithConcurrency(circles, SYNC_CONCURRENCY, async (circle) => {
+		const id = circleIdByName.get(circle.circle);
+		if (id === undefined) throw new Error(`Couldn't find id for ${circle.circle}`);
+
 		await db.transaction(async (tx) => {
-			for (let i = 0; i < chunk.length; i++) {
-				const circle = chunk[i];
-				console.log(`[${i + 1}/${chunk.length}]`, "Synchronizing", circle.circle);
+			const existing = await tx.select().from(release).where(eq(release.circleId, id));
+			const existingLinks = new Map(existing.map((x) => [x.megaLink, x]));
+			const incoming = new Set(circle.releases.map((x) => x.link));
 
-				const id = circleIdByName.get(circle.circle);
-				if (id === undefined) throw new Error(`Couldn't find id for ${circle.circle}`);
+			const toDelete = existing.filter((x) => !incoming.has(x.megaLink)).map((r) => r.id);
+			const toInsert: (typeof release.$inferInsert)[] = [];
+			const toUpdate: (Partial<typeof release.$inferInsert> &
+				Pick<typeof release.$inferSelect, "id">)[] = [];
 
-				const existing = await tx.select().from(release).where(eq(release.circleId, id));
-				const existingLinks = new Map(existing.map((x) => [x.megaLink, x]));
-				const incoming = new Set(circle.releases.map((x) => x.link));
+			for (const item of circle.releases) {
+				const existing = existingLinks.get(item.link);
+				const sizeMb = bToMB(item.sizeBytes);
 
-				const toDelete = existing.filter((x) => !incoming.has(x.megaLink)).map((r) => r.id);
-				const toInsert: (typeof release.$inferInsert)[] = [];
-				const toUpdate: (Partial<typeof release.$inferInsert> &
-					Pick<typeof release.$inferSelect, "id">)[] = [];
-
-				for (const item of circle.releases) {
-					const existing = existingLinks.get(item.link);
-					const sizeMb = bToMB(item.sizeBytes);
-
-					if (!existing) {
-						toInsert.push({
-							circleId: id,
-							name: item.name,
-							megaLink: item.link,
-							sizeMb,
-						});
-					} else if (existing.name !== item.name || existing.sizeMb !== sizeMb) {
-						toUpdate.push({ id: existing.id, name: item.name, sizeMb });
-					}
+				if (!existing) {
+					toInsert.push({
+						circleId: id,
+						name: item.name,
+						megaLink: item.link,
+						sizeMb,
+					});
+				} else if (existing.name !== item.name || existing.sizeMb !== sizeMb) {
+					toUpdate.push({ id: existing.id, name: item.name, sizeMb });
 				}
+			}
 
-				if (toDelete.length > 0) {
-					dCount += toDelete.length;
-					await tx.delete(release).where(inArray(release.id, toDelete));
-				}
+			if (toDelete.length > 0) {
+				dCount += toDelete.length;
+				await tx.delete(release).where(inArray(release.id, toDelete));
+			}
 
-				if (toInsert.length > 0) {
-					iCount += toInsert.length;
-					await tx.insert(release).values(toInsert);
-				}
+			if (toInsert.length > 0) {
+				iCount += toInsert.length;
+				await tx.insert(release).values(toInsert);
+			}
 
-				uCount += toUpdate.length;
-				for (const update of toUpdate) {
-					await tx
-						.update(release)
-						.set({ name: update.name, sizeMb: update.sizeMb })
-						.where(eq(release.id, update.id));
-				}
+			uCount += toUpdate.length;
+			for (const update of toUpdate) {
+				await tx
+					.update(release)
+					.set({ name: update.name, sizeMb: update.sizeMb })
+					.where(eq(release.id, update.id));
 			}
 		});
 
-		console.log("---------- CHUNK OVER ----------\n");
-	}
+		processedCount += 1;
+		console.log(`[${processedCount}/${circles.length}] Synchronized ${circle.circle}`);
+	});
 
 	console.log("Rebuilding FTS indexes...");
 	await db.run(sql`DELETE FROM circle_fts`);
