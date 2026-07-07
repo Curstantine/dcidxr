@@ -9,7 +9,7 @@ import { type FetchGroup, type SyncInputPayload } from "./utils/types.ts";
 import { buildStatusText, normalizeStatus, normalizeString } from "./utils/strings.ts";
 
 import { relations } from "../../web/src/db/relations.ts";
-import { circle, release, serverMeta } from "../../web/src/db/schema.ts";
+import { circle, release, serverMeta, track } from "../../web/src/db/schema.ts";
 
 if (!process.env.TURSO_DATABASE_URL) {
 	throw new Error("[drizzle]: TURSO_DATABASE_URL is not set");
@@ -95,42 +95,54 @@ export async function sync(inputArg?: string): Promise<void> {
 			const incoming = new Set(circle.releases.map((x) => x.link));
 
 			const toDelete = existing.filter((x) => !incoming.has(x.megaLink)).map((r) => r.id);
-			const toInsert: (typeof release.$inferInsert)[] = [];
-			const toUpdate: (Partial<typeof release.$inferInsert> &
-				Pick<typeof release.$inferSelect, "id">)[] = [];
-
-			for (const item of circle.releases) {
-				const existing = existingLinks.get(item.link);
-				const sizeMb = bToMB(item.sizeBytes);
-
-				if (!existing) {
-					toInsert.push({
-						circleId: id,
-						name: item.name,
-						megaLink: item.link,
-						sizeMb,
-					});
-				} else if (existing.name !== item.name || existing.sizeMb !== sizeMb) {
-					toUpdate.push({ id: existing.id, name: item.name, sizeMb });
-				}
-			}
-
 			if (toDelete.length > 0) {
 				dCount += toDelete.length;
 				await tx.delete(release).where(inArray(release.id, toDelete));
 			}
 
-			if (toInsert.length > 0) {
-				iCount += toInsert.length;
-				await tx.insert(release).values(toInsert);
-			}
+			for (const item of circle.releases) {
+				const current = existingLinks.get(item.link);
+				const sizeMb = bToMB(item.sizeBytes);
 
-			uCount += toUpdate.length;
-			for (const update of toUpdate) {
-				await tx
-					.update(release)
-					.set({ name: update.name, sizeMb: update.sizeMb })
-					.where(eq(release.id, update.id));
+				if (!current) {
+					const [inserted] = await tx
+						.insert(release)
+						.values({ circleId: id, name: item.name, megaLink: item.link, sizeMb })
+						.returning({ id: release.id });
+
+					iCount += 1;
+					if (inserted && item.files.length > 0) {
+						iCount += item.files.length;
+						await tx.insert(track).values(
+							item.files.map((x) => ({
+								name: x.name,
+								circleId: id,
+								releaseId: inserted.id,
+							})),
+						);
+					}
+				} else {
+					if (current.name !== item.name || current.sizeMb !== sizeMb) {
+						uCount += 1;
+						await tx
+							.update(release)
+							.set({ name: item.name, sizeMb })
+							.where(eq(release.id, current.id));
+					}
+
+					await tx.delete(track).where(eq(track.releaseId, current.id));
+
+					if (item.files.length > 0) {
+						iCount += item.files.length;
+						await tx.insert(track).values(
+							item.files.map((f) => ({
+								name: f.name,
+								circleId: id,
+								releaseId: current.id,
+							})),
+						);
+					}
+				}
 			}
 		});
 
