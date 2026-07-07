@@ -1,10 +1,3 @@
-export function normalizeString(value: string | null | undefined): string | null {
-	if (typeof value !== "string") return null;
-
-	const normalized = value.trim();
-	return normalized.length > 0 ? normalized : null;
-}
-
 export function normalizeNodeName(name: string | null | undefined, fallback = "Unknown"): string {
 	const normalized = typeof name === "string" ? name.trim() : "";
 	return normalized.length > 0 ? normalized : fallback;
@@ -49,4 +42,17 @@ export function dedupeByKey<T>(values: T[], getKey: (value: T) => string): T[] {
 	}
 
 	return deduped;
+}
+
+export function* chunkIter<T>(values: T[], size: number): Generator<T[]> {
+	if (size <= 0) throw new Error("Chunk size must be greater than 0");
+
+	for (let i = 0; i < values.length; i += size) {
+		yield values.slice(i, i + size);
+	}
+}
+
+export function bToMB(sizeBytes: number): number {
+	if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) return 0;
+	return Math.max(1, Math.ceil(sizeBytes / (1024 * 1024)));
 }
