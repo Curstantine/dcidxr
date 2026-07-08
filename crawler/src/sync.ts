@@ -28,6 +28,7 @@ const db = drizzle({ client, relations });
 
 const CHUNK_SIZE = 100;
 const SYNC_CONCURRENCY = 16;
+const CIRCLE_TX_CHUNK_SIZE = 25;
 
 export async function sync(inputArg?: string): Promise<void> {
 	const path = resolveInputPath(inputArg, "dist/releases.json");
@@ -85,117 +86,121 @@ export async function sync(inputArg?: string): Promise<void> {
 		uCount = 0;
 	let processedCount = 0;
 
-	await mapWithConcurrency(circles, SYNC_CONCURRENCY, async (circle) => {
-		const id = circleIdByName.get(circle.circle);
-		if (id === undefined) throw new Error(`Couldn't find id for ${circle.circle}`);
+	const circleChunks = Array.from(chunkIter(circles, CIRCLE_TX_CHUNK_SIZE));
 
+	await mapWithConcurrency(circleChunks, SYNC_CONCURRENCY, async (circleChunk) => {
 		await db.transaction(async (tx) => {
-			const existing = await tx.select().from(release).where(eq(release.circleId, id));
-			const existingLinks = new Map(existing.map((x) => [x.megaLink, x]));
-			const incoming = new Set(circle.releases.map((x) => x.link));
+			for (const circle of circleChunk) {
+				const id = circleIdByName.get(circle.circle);
+				if (id === undefined) throw new Error(`Couldn't find id for ${circle.circle}`);
 
-			// 1. Bulk Delete Old Releases
-			const toDelete = existing.filter((x) => !incoming.has(x.megaLink)).map((r) => r.id);
-			if (toDelete.length > 0) {
-				dCount += toDelete.length;
-				for (const chunk of chunkIter(toDelete, CHUNK_SIZE)) {
-					await tx.delete(release).where(inArray(release.id, chunk));
-				}
-			}
+				const existing = await tx.select().from(release).where(eq(release.circleId, id));
+				const existingLinks = new Map(existing.map((x) => [x.megaLink, x]));
+				const incoming = new Set(circle.releases.map((x) => x.link));
 
-			const releasesToInsert = [];
-			const releasesToUpdate = [];
-			const tracksToInsert = [];
-			const releaseIdsToClearTracks = [];
-
-			// 2. Categorize operations in memory
-			for (const item of circle.releases) {
-				const current = existingLinks.get(item.link);
-				const sizeMb = bToMB(item.sizeBytes);
-
-				if (!current) {
-					releasesToInsert.push({ ...item, sizeMb });
-				} else {
-					if (current.name !== item.name || current.sizeMb !== sizeMb) {
-						uCount += 1;
-						releasesToUpdate.push({ id: current.id, name: item.name, sizeMb });
-					}
-
-					releaseIdsToClearTracks.push(current.id);
-
-					if (item.files.length > 0) {
-						iCount += item.files.length;
-						tracksToInsert.push(
-							...item.files.map((f) => ({
-								name: f.name,
-								circleId: id,
-								releaseId: current.id,
-							})),
-						);
+				// 1. Bulk Delete Old Releases
+				const toDelete = existing.filter((x) => !incoming.has(x.megaLink)).map((r) => r.id);
+				if (toDelete.length > 0) {
+					dCount += toDelete.length;
+					for (const chunk of chunkIter(toDelete, CHUNK_SIZE)) {
+						await tx.delete(release).where(inArray(release.id, chunk));
 					}
 				}
-			}
 
-			// 3. Execute Updates
-			for (const updateItem of releasesToUpdate) {
-				await tx
-					.update(release)
-					.set({ name: updateItem.name, sizeMb: updateItem.sizeMb })
-					.where(eq(release.id, updateItem.id));
-			}
+				const releasesToInsert = [];
+				const releasesToUpdate = [];
+				const tracksToInsert = [];
+				const releaseIdsToClearTracks = [];
 
-			// 4. Clear old tracks in bulk
-			if (releaseIdsToClearTracks.length > 0) {
-				for (const chunk of chunkIter(releaseIdsToClearTracks, CHUNK_SIZE)) {
-					await tx.delete(track).where(inArray(track.releaseId, chunk));
-				}
-			}
+				// 2. Categorize operations in memory
+				for (const item of circle.releases) {
+					const current = existingLinks.get(item.link);
+					const sizeMb = bToMB(item.sizeBytes);
 
-			// 5. Bulk Insert New Releases & Map IDs to Tracks
-			if (releasesToInsert.length > 0) {
-				for (const chunk of chunkIter(releasesToInsert, CHUNK_SIZE)) {
-					const dbPayload = chunk.map((r) => ({
-						circleId: id,
-						name: r.name,
-						megaLink: r.link,
-						sizeMb: r.sizeMb,
-					}));
+					if (!current) {
+						releasesToInsert.push({ ...item, sizeMb });
+					} else {
+						if (current.name !== item.name || current.sizeMb !== sizeMb) {
+							uCount += 1;
+							releasesToUpdate.push({ id: current.id, name: item.name, sizeMb });
+						}
 
-					const inserted = await tx
-						.insert(release)
-						.values(dbPayload)
-						.returning({ id: release.id, megaLink: release.megaLink });
+						releaseIdsToClearTracks.push(current.id);
 
-					iCount += inserted.length;
-					const idMap = new Map(inserted.map((i) => [i.megaLink, i.id]));
-
-					for (const r of chunk) {
-						const rId = idMap.get(r.link);
-						if (rId && r.files.length > 0) {
-							iCount += r.files.length;
+						if (item.files.length > 0) {
+							iCount += item.files.length;
 							tracksToInsert.push(
-								...r.files.map((f) => ({
+								...item.files.map((f) => ({
 									name: f.name,
 									circleId: id,
-									releaseId: rId,
+									releaseId: current.id,
 								})),
 							);
 						}
 					}
 				}
-			}
 
-			// 6. Bulk Insert All Tracks (For both New and Existing Releases)
-			if (tracksToInsert.length > 0) {
-				// We can chunk this a bit higher since track payloads are small
-				for (const chunk of chunkIter(tracksToInsert, 500)) {
-					await tx.insert(track).values(chunk);
+				// 3. Execute Updates
+				for (const updateItem of releasesToUpdate) {
+					await tx
+						.update(release)
+						.set({ name: updateItem.name, sizeMb: updateItem.sizeMb })
+						.where(eq(release.id, updateItem.id));
 				}
+
+				// 4. Clear old tracks in bulk
+				if (releaseIdsToClearTracks.length > 0) {
+					for (const chunk of chunkIter(releaseIdsToClearTracks, CHUNK_SIZE)) {
+						await tx.delete(track).where(inArray(track.releaseId, chunk));
+					}
+				}
+
+				// 5. Bulk Insert New Releases & Map IDs to Tracks
+				if (releasesToInsert.length > 0) {
+					for (const chunk of chunkIter(releasesToInsert, CHUNK_SIZE)) {
+						const dbPayload = chunk.map((r) => ({
+							circleId: id,
+							name: r.name,
+							megaLink: r.link,
+							sizeMb: r.sizeMb,
+						}));
+
+						const inserted = await tx
+							.insert(release)
+							.values(dbPayload)
+							.returning({ id: release.id, megaLink: release.megaLink });
+
+						iCount += inserted.length;
+						const idMap = new Map(inserted.map((i) => [i.megaLink, i.id]));
+
+						for (const r of chunk) {
+							const rId = idMap.get(r.link);
+							if (rId && r.files.length > 0) {
+								iCount += r.files.length;
+								tracksToInsert.push(
+									...r.files.map((f) => ({
+										name: f.name,
+										circleId: id,
+										releaseId: rId,
+									})),
+								);
+							}
+						}
+					}
+				}
+
+				// 6. Bulk Insert All Tracks (For both New and Existing Releases)
+				if (tracksToInsert.length > 0) {
+					// We can chunk this a bit higher since track payloads are small
+					for (const chunk of chunkIter(tracksToInsert, 500)) {
+						await tx.insert(track).values(chunk);
+					}
+				}
+
+				processedCount += 1;
+				console.log(`[${processedCount}/${circles.length}] Synchronized ${circle.circle}`);
 			}
 		});
-
-		processedCount += 1;
-		console.log(`[${processedCount}/${circles.length}] Synchronized ${circle.circle}`);
 	});
 
 	console.log("Rebuilding FTS indexes...");
@@ -205,8 +210,10 @@ export async function sync(inputArg?: string): Promise<void> {
 		SELECT
 			c.id,
 			c.name,
-			COALESCE((SELECT GROUP_CONCAT(r.name, ' ') FROM release r WHERE r.circle_id = c.id), '') || ' ' ||
-			COALESCE((SELECT GROUP_CONCAT(t.name, ' ') FROM track t WHERE t.circle_id = c.id), '')
+			COALESCE((SELECT GROUP_CONCAT(r.name, ' ') FROM release r WHERE r.circle_id = c.id), '')
+		    -- Note: Temporarily removed tracks as it messes with the search results alot.
+			-- || ' ' ||
+			-- COALESCE((SELECT GROUP_CONCAT(t.name, ' ') FROM track t WHERE t.circle_id = c.id), '')
 		FROM circle c
 	`);
 

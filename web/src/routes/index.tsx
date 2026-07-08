@@ -1,4 +1,4 @@
-import { useDebouncer } from "@tanstack/react-pacer";
+import { useAsyncDebouncer } from "@tanstack/react-pacer";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { LucideCopy, LucideGitBranch, LucideLogOut, LucideSearch } from "lucide-react";
@@ -124,23 +124,24 @@ function Form() {
 
 	const [typeValue, setTypeValue] = useState<SearchType>(searchType);
 
-	const handleSearchChange = useDebouncer(
-		(e: ChangeEvent<HTMLInputElement>) => {
+	const handleSearchChange = useAsyncDebouncer(
+		async (e: ChangeEvent<HTMLInputElement>) => {
 			e.preventDefault();
-			router.preloadRoute({
+
+			await router.preloadRoute({
 				to: "/",
 				search: { search: e.target.value, searchType: typeValue },
 			});
 		},
-		{ wait: 300, key: "HandleSearchChange" },
+		{ wait: 350, key: "HandleSearchChange" },
 	);
 
-	const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
+	const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		const formData = new FormData(e.currentTarget);
 		const value = formData.get("search") as string;
 
-		handleSearchChange.flush();
+		await handleSearchChange.flush();
 
 		router.navigate({
 			to: "/",

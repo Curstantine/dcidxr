@@ -6,6 +6,7 @@ import z from "zod";
 
 import { ensureSession } from "@/auth/func";
 import { db } from "@/db";
+import { buildFtsQuery } from "@/utils/fts";
 
 const PAGE_SIZE = 100;
 
@@ -42,18 +43,9 @@ export const fetchCircles = createServerFn({ method: "GET" })
 			case "all": {
 				if (sv === undefined) clause = {};
 				else {
-					// FTS5 prefix search: split input into words, append * to each for partial matching.
-					const ftsQuery = sv
-						.replace(/[^\w\s]/g, "")
-						.trim()
-						.split(/\s+/)
-						.filter(Boolean)
-						.map((w) => `${w}*`)
-						.join(" ");
-
 					clause = {
 						where: {
-							RAW: sql`id IN (SELECT circle_id FROM circle_fts WHERE circle_fts MATCH ${ftsQuery})`,
+							RAW: sql`id IN (SELECT circle_id FROM circle_fts WHERE circle_fts MATCH ${buildFtsQuery(sv)})`,
 						},
 					};
 				}
