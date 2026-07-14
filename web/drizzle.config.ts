@@ -3,21 +3,16 @@ import { defineConfig } from "drizzle-kit";
 
 config({ path: [".env.local", ".env"] });
 
-if (!process.env.TURSO_DATABASE_URL) {
-	throw new Error("[drizzle]: TURSO_DATABASE_URL is not set");
-}
-
-if (!process.env.TURSO_AUTH_TOKEN) {
-	throw new Error("[drizzle]: TURSO_AUTH_TOKEN is not set");
+if (!process.env.DATABASE_URL) {
+	throw new Error("[drizzle]: DATABASE_URL is not set");
 }
 
 export default defineConfig({
 	strict: true,
 	out: "./drizzle",
 	schema: "./src/db/schema.ts",
-	dialect: "turso",
+	dialect: "postgresql",
 	dbCredentials: {
-		url: process.env.TURSO_DATABASE_URL,
-		authToken: process.env.TURSO_AUTH_TOKEN,
+		url: process.env.DATABASE_URL,
 	},
 });

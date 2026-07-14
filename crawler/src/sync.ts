@@ -1,6 +1,6 @@
-import { eq, inArray, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/libsql";
-import { createClient } from "@libsql/client";
+import { eq, inArray } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/neon-serverless";
+import { Pool } from "@neondatabase/serverless";
 
 import "./utils/prelude.ts";
 import { bToMB, chunkIter, dedupeByKey, mapWithConcurrency } from "./utils/index.ts";
@@ -11,24 +11,16 @@ import { buildStatusText, normalizeStatus, normalizeString } from "./utils/strin
 import { relations } from "../../web/src/db/relations.ts";
 import { circle, release, serverMeta, track } from "../../web/src/db/schema.ts";
 
-if (!process.env.TURSO_DATABASE_URL) {
-	throw new Error("[drizzle]: TURSO_DATABASE_URL is not set");
+if (!process.env.DATABASE_URL) {
+	throw new Error("[drizzle]: DATABASE_URL is not set");
 }
 
-if (!process.env.TURSO_AUTH_TOKEN) {
-	throw new Error("[drizzle]: TURSO_AUTH_TOKEN is not set");
-}
+const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
+const db = drizzle({ client: pool, relations });
 
-const client = createClient({
-	url: process.env.TURSO_DATABASE_URL,
-	authToken: process.env.TURSO_AUTH_TOKEN,
-});
-
-const db = drizzle({ client, relations });
-
-const CHUNK_SIZE = 100;
-const SYNC_CONCURRENCY = 16;
-const CIRCLE_TX_CHUNK_SIZE = 25;
+const SYNC_CONCURRENCY = 10;
+const CHUNK_SIZE = 40;
+const CIRCLE_TX_CHUNK_SIZE = 2;
 
 export async function sync(inputArg?: string): Promise<void> {
 	const path = resolveInputPath(inputArg, "dist/releases.json");
@@ -191,8 +183,7 @@ export async function sync(inputArg?: string): Promise<void> {
 
 				// 6. Bulk Insert All Tracks (For both New and Existing Releases)
 				if (tracksToInsert.length > 0) {
-					// We can chunk this a bit higher since track payloads are small
-					for (const chunk of chunkIter(tracksToInsert, 500)) {
+					for (const chunk of chunkIter(tracksToInsert, 50)) {
 						await tx.insert(track).values(chunk);
 					}
 				}
@@ -202,20 +193,6 @@ export async function sync(inputArg?: string): Promise<void> {
 			}
 		});
 	});
-
-	console.log("Rebuilding FTS indexes...");
-	await db.run(sql`DELETE FROM circle_fts`);
-	await db.run(sql`
-		INSERT INTO circle_fts(circle_id, circle_name, content)
-		SELECT
-			c.id,
-			c.name,
-			COALESCE((SELECT GROUP_CONCAT(r.name, ' ') FROM release r WHERE r.circle_id = c.id), '')
-		    -- Note: Temporarily removed tracks as it messes with the search results alot.
-			-- || ' ' ||
-			-- COALESCE((SELECT GROUP_CONCAT(t.name, ' ') FROM track t WHERE t.circle_id = c.id), '')
-		FROM circle c
-	`);
 
 	const rn = new Date().toISOString();
 	await db

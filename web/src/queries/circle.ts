@@ -6,7 +6,6 @@ import z from "zod";
 
 import { ensureSession } from "@/auth/func";
 import { db } from "@/db";
-import { buildFtsQuery } from "@/utils/fts";
 
 const PAGE_SIZE = 100;
 
@@ -45,7 +44,8 @@ export const fetchCircles = createServerFn({ method: "GET" })
 				else {
 					clause = {
 						where: {
-							RAW: sql`id IN (SELECT circle_id FROM circle_fts WHERE circle_fts MATCH ${buildFtsQuery(sv)})`,
+							RAW: (t) =>
+								sql`${t.searchVector} @@ websearch_to_tsquery('simple', ${sv})`,
 						},
 					};
 				}

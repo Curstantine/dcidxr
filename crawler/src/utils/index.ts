@@ -15,17 +15,38 @@ export async function mapWithConcurrency<TInput, TOutput>(
 		() => null as unknown as TOutput,
 	);
 	let nextIndex = 0;
+	let hasFailed = false;
 
 	const worker = async (): Promise<void> => {
-		while (nextIndex < values.length) {
+		while (nextIndex < values.length && !hasFailed) {
 			const currentIndex = nextIndex;
 			nextIndex += 1;
-			results[currentIndex] = await mapper(values[currentIndex], currentIndex);
+
+			try {
+				results[currentIndex] = await mapper(values[currentIndex], currentIndex);
+			} catch (error) {
+				hasFailed = true;
+
+				const contextError = new Error(
+					`[mapWithConcurrency] Failed at index ${currentIndex}.\n` +
+						`\tItem context: ${JSON.stringify(values[currentIndex]).slice(0, 200)}\n` +
+						`\tOriginal Error: ${error instanceof Error ? error.message : error?.toString()}`,
+				);
+
+				console.error(error);
+
+				if (error instanceof Error && error.stack) {
+					contextError.stack = error.stack;
+				}
+
+				throw contextError;
+			}
 		}
 	};
 
 	const workerCount = Math.max(1, Math.min(concurrency, values.length));
 	await Promise.all(Array.from({ length: workerCount }, () => worker()));
+
 	return results;
 }
 
