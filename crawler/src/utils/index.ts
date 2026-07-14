@@ -29,7 +29,7 @@ export async function mapWithConcurrency<TInput, TOutput>(
 
 				const contextError = new Error(
 					`[mapWithConcurrency] Failed at index ${currentIndex}.\n` +
-						`\tItem context: ${JSON.stringify(values[currentIndex]).slice(0, 200)}\n` +
+						`\tItem context:\n${JSON.stringify(values[currentIndex], undefined, 2)}\n` +
 						`\tOriginal Error: ${error instanceof Error ? error.message : error?.toString()}`,
 				);
 

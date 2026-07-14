@@ -12,7 +12,7 @@ export const auth = betterAuth({
 	rateLimit: {
 		enabled: true,
 	},
-	database: drizzleAdapter(db, { provider: "sqlite", schema }),
+	database: drizzleAdapter(db, { provider: "pg", schema }),
 	emailAndPassword: {
 		enabled: true,
 		disableSignUp: true,

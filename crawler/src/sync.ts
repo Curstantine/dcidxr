@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { Pool } from "@neondatabase/serverless";
 
@@ -18,11 +18,29 @@ if (!process.env.DATABASE_URL) {
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
 const db = drizzle({ client: pool, relations });
 
-const SYNC_CONCURRENCY = 10;
+const SYNC_CONCURRENCY = 5;
 const CHUNK_SIZE = 40;
 const CIRCLE_TX_CHUNK_SIZE = 2;
 
+async function wakeupDatabase(retries = 3) {
+	for (let i = 0; i < retries; i++) {
+		try {
+			console.log("Checking database connection (waking up if asleep)...");
+			await db.execute(sql`SELECT 1`);
+			console.log("Database is awake and ready!");
+			return;
+		} catch {
+			console.warn(
+				`Connection failed (Attempt ${i + 1}/${retries}). Retrying in 2 seconds...`,
+			);
+			await new Promise((res) => setTimeout(res, 2000));
+		}
+	}
+	throw new Error("Failed to wake up the database after multiple attempts.");
+}
+
 export async function sync(inputArg?: string): Promise<void> {
+	await wakeupDatabase();
 	const path = resolveInputPath(inputArg, "dist/releases.json");
 	const input = await readJsonFile<SyncInputPayload>(path);
 
@@ -86,7 +104,17 @@ export async function sync(inputArg?: string): Promise<void> {
 				const id = circleIdByName.get(circle.circle);
 				if (id === undefined) throw new Error(`Couldn't find id for ${circle.circle}`);
 
-				const existing = await tx.select().from(release).where(eq(release.circleId, id));
+				let existing;
+				try {
+					existing = await tx.select().from(release).where(eq(release.circleId, id));
+				} catch (e) {
+					console.error(
+						`[sync]: Failed to fetch existing releases for circle ${circle.circle}:`,
+						e,
+					);
+					throw e;
+				}
+
 				const existingLinks = new Map(existing.map((x) => [x.megaLink, x]));
 				const incoming = new Set(circle.releases.map((x) => x.link));
 
@@ -95,7 +123,15 @@ export async function sync(inputArg?: string): Promise<void> {
 				if (toDelete.length > 0) {
 					dCount += toDelete.length;
 					for (const chunk of chunkIter(toDelete, CHUNK_SIZE)) {
-						await tx.delete(release).where(inArray(release.id, chunk));
+						try {
+							await tx.delete(release).where(inArray(release.id, chunk));
+						} catch (e) {
+							console.error(
+								`[sync]: Failed to delete old releases for circle ${circle.circle}:`,
+								e,
+							);
+							throw e;
+						}
 					}
 				}
 
@@ -134,16 +170,32 @@ export async function sync(inputArg?: string): Promise<void> {
 
 				// 3. Execute Updates
 				for (const updateItem of releasesToUpdate) {
-					await tx
-						.update(release)
-						.set({ name: updateItem.name, sizeMb: updateItem.sizeMb })
-						.where(eq(release.id, updateItem.id));
+					try {
+						await tx
+							.update(release)
+							.set({ name: updateItem.name, sizeMb: updateItem.sizeMb })
+							.where(eq(release.id, updateItem.id));
+					} catch (e) {
+						console.error(
+							`[sync]: Failed to update release ${updateItem.name} for circle ${circle.circle}:`,
+							e,
+						);
+						throw e;
+					}
 				}
 
 				// 4. Clear old tracks in bulk
 				if (releaseIdsToClearTracks.length > 0) {
 					for (const chunk of chunkIter(releaseIdsToClearTracks, CHUNK_SIZE)) {
-						await tx.delete(track).where(inArray(track.releaseId, chunk));
+						try {
+							await tx.delete(track).where(inArray(track.releaseId, chunk));
+						} catch (e) {
+							console.error(
+								`[sync]: Failed to clear old tracks for circle ${circle.circle}:`,
+								e,
+							);
+							throw e;
+						}
 					}
 				}
 
@@ -157,10 +209,19 @@ export async function sync(inputArg?: string): Promise<void> {
 							sizeMb: r.sizeMb,
 						}));
 
-						const inserted = await tx
-							.insert(release)
-							.values(dbPayload)
-							.returning({ id: release.id, megaLink: release.megaLink });
+						let inserted;
+						try {
+							inserted = await tx
+								.insert(release)
+								.values(dbPayload)
+								.returning({ id: release.id, megaLink: release.megaLink });
+						} catch (e) {
+							console.error(
+								`[sync]: Failed to insert new releases chunk for circle ${circle.circle}:`,
+								e,
+							);
+							throw e;
+						}
 
 						iCount += inserted.length;
 						const idMap = new Map(inserted.map((i) => [i.megaLink, i.id]));
@@ -184,7 +245,15 @@ export async function sync(inputArg?: string): Promise<void> {
 				// 6. Bulk Insert All Tracks (For both New and Existing Releases)
 				if (tracksToInsert.length > 0) {
 					for (const chunk of chunkIter(tracksToInsert, 50)) {
-						await tx.insert(track).values(chunk);
+						try {
+							await tx.insert(track).values(chunk);
+						} catch (e) {
+							console.error(
+								`[sync]: Failed to insert tracks chunk for circle ${circle.circle}:`,
+								e,
+							);
+							throw e;
+						}
 					}
 				}
 
