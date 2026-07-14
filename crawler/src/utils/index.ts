@@ -1,3 +1,5 @@
+import { wait } from "@jabascript/core";
+
 export function normalizeNodeName(name: string | null | undefined, fallback = "Unknown"): string {
 	const normalized = typeof name === "string" ? name.trim() : "";
 	return normalized.length > 0 ? normalized : fallback;
@@ -6,6 +8,7 @@ export function normalizeNodeName(name: string | null | undefined, fallback = "U
 export async function mapWithConcurrency<TInput, TOutput>(
 	values: TInput[],
 	concurrency: number,
+	retryCount: number,
 	mapper: (value: TInput, index: number) => Promise<TOutput>,
 ): Promise<TOutput[]> {
 	if (values.length === 0) return [];
@@ -22,24 +25,37 @@ export async function mapWithConcurrency<TInput, TOutput>(
 			const currentIndex = nextIndex;
 			nextIndex += 1;
 
-			try {
-				results[currentIndex] = await mapper(values[currentIndex], currentIndex);
-			} catch (error) {
-				hasFailed = true;
+			let attempts = 0;
+			while (true) {
+				try {
+					results[currentIndex] = await mapper(values[currentIndex], currentIndex);
+					break;
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
 
-				const contextError = new Error(
-					`[mapWithConcurrency] Failed at index ${currentIndex}.\n` +
-						`\tItem context:\n${JSON.stringify(values[currentIndex], undefined, 2)}\n` +
-						`\tOriginal Error: ${error instanceof Error ? error.message : error?.toString()}`,
-				);
+					if (attempts < retryCount && !hasFailed) {
+						attempts += 1;
+						console.warn(
+							`[mapWithConcurrency] Mapper failed at index ${currentIndex}. Retrying (attempt ${attempts}/${retryCount})...\n` +
+								`Error: ${message}`,
+						);
 
-				console.error(error);
+						await wait(1000);
+					} else {
+						hasFailed = true;
+						const contextError = new Error(
+							`[mapWithConcurrency] Failed at index ${currentIndex}.\n` +
+								`Item context:\n${JSON.stringify(values[currentIndex], undefined, 2)}\n` +
+								`Original Error: ${message}`,
+						);
 
-				if (error instanceof Error && error.stack) {
-					contextError.stack = error.stack;
+						if (error instanceof Error && error.stack) {
+							contextError.stack = error.stack;
+						}
+
+						throw contextError;
+					}
 				}
-
-				throw contextError;
 			}
 		}
 	};

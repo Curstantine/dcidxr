@@ -23,6 +23,9 @@ importers:
 
   crawler:
     dependencies:
+      '@jabascript/core':
+        specifier: ^0.5.0
+        version: 0.5.0
       '@neondatabase/serverless':
         specifier: ^1.0.0
         version: 1.1.0

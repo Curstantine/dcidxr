@@ -1,6 +1,7 @@
 import { eq, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { Pool } from "@neondatabase/serverless";
+import { wait } from "@jabascript/core";
 
 import "./utils/prelude.ts";
 import { bToMB, chunkIter, dedupeByKey, mapWithConcurrency } from "./utils/index.ts";
@@ -19,25 +20,8 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
 const db = drizzle({ client: pool, relations });
 
 const SYNC_CONCURRENCY = 5;
-const CHUNK_SIZE = 40;
-const CIRCLE_TX_CHUNK_SIZE = 2;
-
-async function wakeupDatabase(retries = 3) {
-	for (let i = 0; i < retries; i++) {
-		try {
-			console.log("Checking database connection (waking up if asleep)...");
-			await db.execute(sql`SELECT 1`);
-			console.log("Database is awake and ready!");
-			return;
-		} catch {
-			console.warn(
-				`Connection failed (Attempt ${i + 1}/${retries}). Retrying in 2 seconds...`,
-			);
-			await new Promise((res) => setTimeout(res, 2000));
-		}
-	}
-	throw new Error("Failed to wake up the database after multiple attempts.");
-}
+const CHUNK_SIZE = 1000;
+const CIRCLE_TX_CHUNK_SIZE = 10;
 
 export async function sync(inputArg?: string): Promise<void> {
 	await wakeupDatabase();
@@ -59,6 +43,7 @@ export async function sync(inputArg?: string): Promise<void> {
 	try {
 		const names = circles.map((x) => x.circle);
 		for (const chunk of chunkIter(names, CHUNK_SIZE)) {
+			console.log("Collecting data for", chunk.length, "circles");
 			const existing = await db
 				.select({ id: circle.id, name: circle.name })
 				.from(circle)
@@ -98,7 +83,7 @@ export async function sync(inputArg?: string): Promise<void> {
 
 	const circleChunks = Array.from(chunkIter(circles, CIRCLE_TX_CHUNK_SIZE));
 
-	await mapWithConcurrency(circleChunks, SYNC_CONCURRENCY, async (circleChunk) => {
+	await mapWithConcurrency(circleChunks, SYNC_CONCURRENCY, 3, async (circleChunk) => {
 		await db.transaction(async (tx) => {
 			for (const circle of circleChunk) {
 				const id = circleIdByName.get(circle.circle);
@@ -285,6 +270,23 @@ export async function sync(inputArg?: string): Promise<void> {
 		`  - updates: ${uCount}\n`,
 		`  - deletions: ${dCount}`,
 	);
+}
+
+async function wakeupDatabase(retries = 3) {
+	for (let i = 0; i < retries; i++) {
+		try {
+			console.log("Checking database connection (waking up if asleep)...");
+			await db.execute(sql`SELECT 1`);
+			console.log("Database is awake and ready!");
+			return;
+		} catch {
+			console.warn(
+				`Connection failed (Attempt ${i + 1}/${retries}). Retrying in 2 seconds...`,
+			);
+			await wait(1000);
+		}
+	}
+	throw new Error("Failed to wake up the database after multiple attempts.");
 }
 
 const fetchGroupToCircleInsert = (x: FetchGroup): typeof circle.$inferInsert => {

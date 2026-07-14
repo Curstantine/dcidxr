@@ -230,25 +230,32 @@ export async function fetchReleases(inputArg?: string, outputArg?: string): Prom
 		group.links.map((link) => ({ groupIndex, circle: group.circle, link })),
 	);
 
-	const taskResults = await mapWithConcurrency(linkTasks, DEFAULT_CONCURRENCY, async (task) => {
-		processedLinkCount += 1;
-		console.log(`[${processedLinkCount}/${totalLinks}] Fetching ${task.circle}: ${task.link}`);
+	const taskResults = await mapWithConcurrency(
+		linkTasks,
+		DEFAULT_CONCURRENCY,
+		0,
+		async (task) => {
+			processedLinkCount += 1;
+			console.log(
+				`[${processedLinkCount}/${totalLinks}] Fetching ${task.circle}: ${task.link}`,
+			);
 
-		try {
-			return {
-				groupIndex: task.groupIndex,
-				releases: await fetchReleasesFromLink(task.link),
-				error: null,
-			};
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : String(error);
-			return {
-				groupIndex: task.groupIndex,
-				releases: [],
-				error: `${task.link}: ${message}`,
-			};
-		}
-	});
+			try {
+				return {
+					groupIndex: task.groupIndex,
+					releases: await fetchReleasesFromLink(task.link),
+					error: null,
+				};
+			} catch (error: unknown) {
+				const message = error instanceof Error ? error.message : String(error);
+				return {
+					groupIndex: task.groupIndex,
+					releases: [],
+					error: `${task.link}: ${message}`,
+				};
+			}
+		},
+	);
 
 	const groupAccumulators: GroupAccumulator[] = groups.map(() => ({
 		releaseSets: [],
