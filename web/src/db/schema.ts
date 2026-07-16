@@ -64,6 +64,7 @@ export const track = pgTable(
 	(table) => [
 		index("tracks_circle_id_idx").on(table.circleId),
 		index("tracks_release_id_idx").on(table.releaseId),
+		index("tracks_release_id_name_idx").on(table.releaseId, table.name),
 	],
 );
 

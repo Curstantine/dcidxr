@@ -4,9 +4,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { sql } from "drizzle-orm";
 import z from "zod";
 
-import { ensureSession } from "@/auth/func";
-
-import { loggingMiddleware } from "@/integrations/queries";
+import { authMiddleware } from "@/integrations/auth";
+import { loggingMiddleware } from "@/integrations/logging";
 
 import { db } from "@/db";
 
@@ -24,9 +23,8 @@ export const fetchCirclesInput = z.object({
 // the query will not return any results.
 export const fetchCircles = createServerFn({ method: "GET" })
 	.validator(fetchCirclesInput)
-	.middleware([loggingMiddleware])
+	.middleware([authMiddleware, loggingMiddleware])
 	.handler(async ({ data: { search, cursor, searchType, includeTracks } }) => {
-		await ensureSession();
 		const sv = takeIf(search, (x) => x !== undefined && x !== "") ?? undefined;
 		const svs = takeMapped(sv, (x) => `%${x}%`) ?? undefined;
 

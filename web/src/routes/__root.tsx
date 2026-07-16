@@ -2,6 +2,7 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 import { createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
 import { Analytics } from "@vercel/analytics/react";
 
+import { NotFound } from "@/components/not-found";
 import { Toaster } from "@/components/sonner";
 
 import TanstackPacerDevtools from "@/integrations/pacer/devtools";
@@ -17,6 +18,7 @@ interface MyRouterContext {
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
+	notFoundComponent: NotFound,
 	head: () => ({
 		meta: [
 			{ charSet: "utf-8" },

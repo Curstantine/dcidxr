@@ -1,5 +1,5 @@
 import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
+import { getRequestHeaders, setResponseStatus } from "@tanstack/react-start/server";
 import { APIError } from "better-auth/api";
 
 import { auth } from "@/auth";
@@ -12,22 +12,22 @@ export const getSession = createServerFn({ method: "GET" }).handler(async () => 
 	return session;
 });
 
-const ensureSessionUtil = createServerOnlyFn(async () => {
+export const ensureSessionUtil = createServerOnlyFn(async () => {
 	const headers = getRequestHeaders();
 	const session = await auth.api.getSession({ headers });
 
-	if (!session) throw new Error("Unauthorized");
+	if (!session) {
+		setResponseStatus(401);
+		throw new Error("Unauthorized");
+	}
 
 	return { headers, session };
-});
-
-export const ensureSession = createServerFn({ method: "GET" }).handler(async () => {
-	return (await ensureSessionUtil()).session;
 });
 
 type DiscordGuildMember = {
 	roles: string[];
 };
+
 export const checkDiscordAccess = createServerOnlyFn(async (token: string) => {
 	const res = await fetch(
 		`https://discord.com/api/users/@me/guilds/${env.DISCORD_GUILD_ID}/member`,

@@ -1,0 +1,1 @@
+CREATE INDEX "tracks_release_id_name_idx" ON "track" ("release_id","name");
