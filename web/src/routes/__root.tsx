@@ -2,6 +2,8 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
 
+import { Analytics } from "@vercel/analytics/react";
+
 import { Toaster } from "@/components/sonner";
 import TanstackPacerDevtools from "@/integrations/pacer/devtools";
 import TanStackQueryDevtools from "@/integrations/query/devtools";
@@ -40,6 +42,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				/>
 				<Scripts />
 				<Toaster />
+				<Analytics />
 			</body>
 		</html>
 	);
