@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { drizzle } from "drizzle-orm/neon-serverless";
 import { config } from "dotenv";
+import { drizzle } from "drizzle-orm/neon-serverless";
 
 import { relations } from "../src/db/relations.ts";
 import * as schema from "../src/db/schema.ts";

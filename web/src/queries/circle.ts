@@ -5,6 +5,9 @@ import { sql } from "drizzle-orm";
 import z from "zod";
 
 import { ensureSession } from "@/auth/func";
+
+import { loggingMiddleware } from "@/integrations/queries";
+
 import { db } from "@/db";
 
 const PAGE_SIZE = 100;
@@ -13,6 +16,7 @@ export const fetchCirclesInput = z.object({
 	search: z.string().trim().optional(),
 	cursor: z.number().optional(),
 	searchType: z.enum(["all", "circle", "release"]).optional().default("all"),
+	includeTracks: z.boolean().optional().default(false),
 });
 
 // TODO: Once the prepared statement bug is fixed, migrate this to use prepared statements.
@@ -20,7 +24,8 @@ export const fetchCirclesInput = z.object({
 // the query will not return any results.
 export const fetchCircles = createServerFn({ method: "GET" })
 	.validator(fetchCirclesInput)
-	.handler(async ({ data: { search, cursor, searchType } }) => {
+	.middleware([loggingMiddleware])
+	.handler(async ({ data: { search, cursor, searchType, includeTracks } }) => {
 		await ensureSession();
 		const sv = takeIf(search, (x) => x !== undefined && x !== "") ?? undefined;
 		const svs = takeMapped(sv, (x) => `%${x}%`) ?? undefined;
@@ -54,8 +59,6 @@ export const fetchCircles = createServerFn({ method: "GET" })
 			}
 		}
 
-		console.log(clause);
-
 		const query = await db.query.circle.findMany({
 			limit: PAGE_SIZE,
 			columns: {
@@ -73,6 +76,18 @@ export const fetchCircles = createServerFn({ method: "GET" })
 			with: {
 				releases: {
 					columns: { id: true, name: true, sizeMb: true, megaLink: true },
+					...(includeTracks
+						? {
+								with: {
+									tracks: {
+										columns: { id: true, name: true },
+										orderBy: {
+											name: "asc",
+										},
+									},
+								},
+							}
+						: {}),
 					...(clause.with?.releases ?? ({} as unknown as {})),
 				},
 			},
@@ -93,12 +108,13 @@ export type FetchCirclesShape = Awaited<ReturnType<typeof fetchCircles>>;
 export const circlesInfiniteQueryOptions = ({
 	search,
 	searchType,
+	includeTracks,
 }: z.input<typeof fetchCirclesInput>) =>
 	infiniteQueryOptions({
-		queryKey: ["circles", search, searchType],
+		queryKey: ["circles", search, searchType, includeTracks],
 		initialPageParam: undefined as number | undefined,
 		queryFn: ({ pageParam }) =>
-			fetchCircles({ data: { search, searchType, cursor: pageParam } }),
+			fetchCircles({ data: { search, searchType, includeTracks, cursor: pageParam } }),
 		getNextPageParam: (lastPage) => {
 			return lastPage.circles.length < PAGE_SIZE ? undefined : lastPage.circles.at(-1)?.id;
 		},

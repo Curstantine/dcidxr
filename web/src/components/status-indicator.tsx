@@ -1,6 +1,8 @@
 import { Badge } from "@/components/badge";
-import type { CircleStatus } from "@/types/circle";
+
 import { getCircleStatusLabel } from "@/utils/grammar";
+
+import type { CircleStatus } from "@/types/circle";
 
 type Props = {
 	status: CircleStatus;
@@ -12,7 +14,7 @@ export function StatusIndicator({ status, statusText }: Props) {
 		<Badge
 			title={statusText}
 			variant={status === "complete" ? "default" : "destructive"}
-			className="cursor-default ml-1"
+			className="ml-1 cursor-default"
 		>
 			{getCircleStatusLabel(status)}
 		</Badge>

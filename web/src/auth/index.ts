@@ -4,8 +4,10 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 
 import { checkDiscordAccess } from "@/auth/func";
-import { db } from "@/db";
+
 import * as schema from "@/db/schema";
+
+import { db } from "@/db";
 import { env } from "@/env";
 
 export const auth = betterAuth({

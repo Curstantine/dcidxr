@@ -5,6 +5,7 @@ import z from "zod";
 
 import { authClient } from "@/auth/client";
 import { getSession } from "@/auth/func";
+
 import { Button } from "@/components/button";
 import { Field, FieldError, FieldSeparator } from "@/components/field";
 import { Input } from "@/components/input";
@@ -73,18 +74,18 @@ function RouteComponent() {
 	};
 
 	return (
-		<main className="px-4 mx-auto flex flex-col items-center justify-center h-screen pb-12 sm:max-w-sm sm:px-0">
+		<main className="mx-auto flex h-screen flex-col items-center justify-center px-4 pb-12 sm:max-w-sm sm:px-0">
 			{hasAccess !== undefined && !hasAccess && (
-				<div className="border p-2 text-center border-current text-red-500 dark:text-red-400">
+				<div className="border border-current p-2 text-center text-red-500 dark:text-red-400">
 					<p>You do not have access to the certain server and channel!!</p>
 				</div>
 			)}
-			<h1 className="text-2xl mb-6 font-medium">Login</h1>
+			<h1 className="mb-6 text-2xl font-medium">Login</h1>
 
 			<Form
 				errors={fieldErrors}
 				onFormSubmit={handleEmailLogin}
-				className="w-full flex flex-col gap-3 mb-6"
+				className="mb-6 flex w-full flex-col gap-3"
 			>
 				<Field>
 					<Input
@@ -115,7 +116,7 @@ function RouteComponent() {
 				</Button>
 			</Form>
 
-			<FieldSeparator className="w-full mb-6 mt-1">or</FieldSeparator>
+			<FieldSeparator className="mt-1 mb-6 w-full">or</FieldSeparator>
 
 			<Button
 				type="button"
@@ -124,7 +125,7 @@ function RouteComponent() {
 				onClick={handleDiscordLogin}
 				className="w-full"
 			>
-				<span aria-hidden className="iconify bxl--discord-alt size-6" />
+				<span aria-hidden className="iconify size-6 bxl--discord-alt" />
 				Sign in with Discord
 			</Button>
 		</main>

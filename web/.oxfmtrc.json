@@ -6,5 +6,34 @@
 	"printWidth": 100,
 	"singleQuote": false,
 	"semi": true,
-	"trailingComma": "all"
+	"trailingComma": "all",
+	"sortTailwindcss": {
+		"stylesheet": "./src/styles.css"
+	},
+	"sortImports": {
+		"customGroups": [
+			{ "groupName": "auth", "elementNamePattern": ["@/auth/**/*"] },
+			{ "groupName": "components", "elementNamePattern": ["@/components/**/*"] },
+			{ "groupName": "db", "elementNamePattern": ["@/db/**/*"] },
+			{ "groupName": "queries", "elementNamePattern": ["@/queries/**/*"] },
+			{ "groupName": "utils", "elementNamePattern": ["@/utils/**/*", "@/integrations/**/*"] },
+			{ "groupName": "types", "elementNamePattern": ["@/types/**/*"] }
+		],
+		"groups": [
+			["value-builtin", "value-external"],
+			{ "newlinesBetween": true },
+			"auth",
+			{ "newlinesBetween": true },
+			"components",
+			{ "newlinesBetween": true },
+			["db", "queries"],
+			{ "newlinesBetween": true },
+			"utils",
+			{ "newlinesBetween": true },
+			["type-import", "types"],
+			{ "newlinesBetween": true },
+			["value-parent", "value-sibling", "value-index"],
+			"unknown"
+		]
+	}
 }

@@ -1,13 +1,15 @@
-import { cva, type VariantProps } from "class-variance-authority";
 import {
 	Field as FieldPrimitive,
 	type FieldErrorProps,
 	type FieldRootProps,
 } from "@base-ui/react/field";
+import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@/utils/index";
 import { Label } from "@/components/label";
 import { Separator } from "@/components/separator";
+
+import { cn } from "@/utils/index";
+
 import type { ComponentProps } from "react";
 
 function FieldSet({ className, ...props }: ComponentProps<"fieldset">) {
