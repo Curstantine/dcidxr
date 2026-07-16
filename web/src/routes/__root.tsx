@@ -22,7 +22,13 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			{ name: "viewport", content: "width=device-width, initial-scale=1" },
 			{ title: "Doujin Cafe Indexer" },
 		],
-		links: [{ rel: "stylesheet", href: appCss }],
+		links: [
+			{ rel: "stylesheet", href: appCss },
+			{ rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
+			{ rel: "icon", type: "image/png", href: "/icon.png" },
+			{ rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch.png" },
+			{ rel: "manifest", href: "/manifest.json" },
+		],
 	}),
 	shellComponent: RootDocument,
 });
@@ -42,7 +48,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				/>
 				<Scripts />
 				<Toaster />
-				<Analytics />
+				{import.meta.env.PROD && <Analytics />}
 			</body>
 		</html>
 	);

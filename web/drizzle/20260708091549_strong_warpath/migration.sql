@@ -1,5 +1,4 @@
--- Custom migration: search_vector triggers for automatic FTS refresh
-
+--> statement-breakpoint
 CREATE OR REPLACE FUNCTION refresh_circle_search_vector(target_circle_id integer)
 RETURNS void
 LANGUAGE plpgsql
@@ -32,8 +31,6 @@ BEGIN
 END;
 $$;
 --> statement-breakpoint
-
--- Backfill search vectors for any existing circles
 UPDATE "circle"
 SET "search_vector" =
 	setweight(to_tsvector('simple', coalesce("name", '')), 'A') ||
@@ -58,7 +55,6 @@ SET "search_vector" =
 		'C'
 	);
 --> statement-breakpoint
-
 CREATE OR REPLACE FUNCTION circle_search_vector_refresh_on_circle_change()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -69,7 +65,6 @@ BEGIN
 END;
 $$;
 --> statement-breakpoint
-
 CREATE OR REPLACE FUNCTION circle_search_vector_refresh_on_release_change()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -80,7 +75,6 @@ BEGIN
 END;
 $$;
 --> statement-breakpoint
-
 CREATE OR REPLACE FUNCTION circle_search_vector_refresh_on_track_change()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -91,19 +85,16 @@ BEGIN
 END;
 $$;
 --> statement-breakpoint
-
 CREATE TRIGGER circle_search_vector_circle_trigger
 AFTER INSERT OR UPDATE OF "name" ON "circle"
 FOR EACH ROW
 EXECUTE FUNCTION circle_search_vector_refresh_on_circle_change();
 --> statement-breakpoint
-
 CREATE TRIGGER circle_search_vector_release_trigger
 AFTER INSERT OR UPDATE OF "name", "circle_id" OR DELETE ON "release"
 FOR EACH ROW
 EXECUTE FUNCTION circle_search_vector_refresh_on_release_change();
 --> statement-breakpoint
-
 CREATE TRIGGER circle_search_vector_track_trigger
 AFTER INSERT OR UPDATE OF "name", "circle_id" OR DELETE ON "track"
 FOR EACH ROW

@@ -73,7 +73,7 @@ function RouteComponent() {
 	};
 
 	return (
-		<main className="max-w-sm mx-auto flex flex-col items-center justify-center h-screen pb-12">
+		<main className="px-4 mx-auto flex flex-col items-center justify-center h-screen pb-12 sm:max-w-sm sm:px-0">
 			{hasAccess !== undefined && !hasAccess && (
 				<div className="border p-2 text-center border-current text-red-500 dark:text-red-400">
 					<p>You do not have access to the certain server and channel!!</p>
@@ -117,7 +117,13 @@ function RouteComponent() {
 
 			<FieldSeparator className="w-full mb-6 mt-1">or</FieldSeparator>
 
-			<Button type="button" size="lg" variant="discord" onClick={handleDiscordLogin}>
+			<Button
+				type="button"
+				size="lg"
+				variant="discord"
+				onClick={handleDiscordLogin}
+				className="w-full"
+			>
 				<span aria-hidden className="iconify bxl--discord-alt size-6" />
 				Sign in with Discord
 			</Button>

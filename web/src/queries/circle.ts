@@ -54,6 +54,8 @@ export const fetchCircles = createServerFn({ method: "GET" })
 			}
 		}
 
+		console.log(clause);
+
 		const query = await db.query.circle.findMany({
 			limit: PAGE_SIZE,
 			columns: {
