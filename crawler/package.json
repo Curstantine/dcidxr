@@ -12,7 +12,7 @@
 		"check": "oxlint && oxfmt --check"
 	},
 	"dependencies": {
-		"@jabascript/core": "^0.5.0",
+		"@jabascript/core": "^0.6.0",
 		"@neondatabase/serverless": "^1.1.0",
 		"dotenv": "^17.4.2",
 		"drizzle-orm": "1.0.0-beta.21",
@@ -20,7 +20,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "^24.13.3",
-		"oxfmt": "^0.57.0",
+		"oxfmt": "^0.63.0",
 		"oxlint": "^1.78.0"
 	}
 }
