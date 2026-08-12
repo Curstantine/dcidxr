@@ -1,13 +1,11 @@
+import { e64, d64, AES, formatKey, getCipher, megaDecrypt } from "./crypto/index.mjs";
+import API from "./api.mjs";
 import { EventEmitter } from "events";
+import { streamToCb, createPromise } from "./util.mjs";
 import { PassThrough } from "stream";
-
 import StreamSkip from "stream-skip";
 
-import API from "./api.mjs";
-import { AES, d64, e64, formatKey, getCipher, megaDecrypt } from "./crypto/index.mjs";
-import { createPromise, streamToCb } from "./util.mjs";
-
-class File extends EventEmitter {
+export class File extends EventEmitter {
 	constructor(opt) {
 		super();
 		this.checkConstructorArgument(opt.downloadId);
@@ -52,60 +50,28 @@ class File extends EventEmitter {
 
 		if (!aes || !opt.k) return;
 
-		const encryptedKeys = opt.k
-			.split("/")
-			.map((pair) => pair.split(":").pop())
-			.filter((value) => value)
-			.map((value) => formatKey(value));
+		// HACK: The correct key for shared folder is the one which parts[0] === folder.h
+		// but we can just try every single key alternative
+		const keyAlternatives = opt.k.split("/").map((e) => e.split(":"));
+		for (const parts of keyAlternatives) {
+			this.key = formatKey(parts[parts.length - 1]);
 
-		let fallbackKey = null;
-		let attributes;
-
-		for (const encryptedKey of encryptedKeys) {
-			let decryptedKey = Buffer.from(encryptedKey);
-
-			try {
-				if (decryptedKey.length <= 32) {
-					// Regular AES-ECB encrypted key
-					aes.decryptECB(decryptedKey);
-				} else if (this.storage) {
-					// RSA encrypted key
-					decryptedKey = this.storage
-						.decryptRsaKey(decryptedKey)
-						.slice(0, this.directory ? 16 : 32);
-				} else {
-					// Can't decrypt a RSA key without a storage
-					continue;
-				}
-			} catch {
-				continue;
+			if (this.key.length <= 32) {
+				// Regular AES-ECB encrypted key
+				aes.decryptECB(this.key);
+			} else if (this.storage) {
+				// RSA encrypted key
+				this.key = this.storage.decryptRsaKey(this.key).slice(0, this.directory ? 16 : 32);
+			} else {
+				// Can't decrypt a RSA key without a storage
+				this.key = null;
 			}
 
-			if (!fallbackKey) fallbackKey = decryptedKey;
-
-			if (!opt.a) {
-				this.key = decryptedKey;
-				break;
+			// HACK use the decryption of attributes as a marker for the correct key
+			if (opt.a) {
+				const gotSuccess = this.decryptAttributes(opt.a);
+				if (gotSuccess) break;
 			}
-
-			const at = d64(opt.a);
-			getCipher(decryptedKey).decryptCBC(at);
-			const unpackedAttributes = File.unpackAttributes(at);
-			if (unpackedAttributes) {
-				this.key = decryptedKey;
-				attributes = unpackedAttributes;
-				break;
-			}
-		}
-
-		if (!this.key) {
-			this.key = fallbackKey;
-		}
-
-		if (attributes) {
-			this.parseAttributes(attributes);
-		} else if (opt.a) {
-			this.decryptAttributes(opt.a);
 		}
 	}
 
@@ -117,7 +83,10 @@ class File extends EventEmitter {
 		const unpackedAttribtes = File.unpackAttributes(at);
 		if (unpackedAttribtes) {
 			this.parseAttributes(unpackedAttribtes);
+			return true;
 		}
+
+		return false;
 	}
 
 	parseAttributes(at) {
@@ -152,19 +121,16 @@ class File extends EventEmitter {
 			if (this.directory) {
 				const filesMap = Object.create(null);
 				const nodes = response.f;
-				const handles = new Set(nodes.map((node) => node.h));
-				// Shared folder responses used to reliably identify the root node through the
-				// first segment of `k`. Some newer responses no longer follow that pattern, so
-				// we first try the old heuristic and then fall back to the only node whose
-				// parent handle is not part of the returned node set, which is the tree root.
-				const folder =
-					nodes.find((x) => x.k && x.h === x.k.split(":")[0]) ??
-					nodes.find((x) => !handles.has(x.p));
-
-				if (!folder) {
-					return cb(Error("Shared folder root node could not be determined."));
-				}
-
+				const folder = nodes.find(
+					(node) =>
+						node.k &&
+						// support multiple k definitions
+						node.k.split("/").some(
+							(part) =>
+								// the root folder is the one which "h" equals the first part of "k"
+								node.h === part.split(":")[0],
+						),
+				);
 				const aes = this.key ? new AES(this.key) : null;
 				this.nodeId = folder.h;
 				this.timestamp = folder.ts;
@@ -639,20 +605,18 @@ class File extends EventEmitter {
 
 		try {
 			return JSON.parse(at.substr(4));
-		} catch (e) {}
+		} catch (e) {
+			console.error("Failed to parse attributes", e);
+		}
 	}
 
 	static defaultHandleRetries(tries, error, cb) {
 		if (tries > 8) {
 			cb(error);
 		} else {
-			setTimeout(cb, 1000 * 2 ** tries);
+			setTimeout(cb, 1000 * Math.pow(2, tries));
 		}
 	}
 }
 
-const LABEL_NAMES = ["", "red", "orange", "yellow", "green", "blue", "purple", "grey"];
-
-export default File;
-
-export { LABEL_NAMES };
+export const LABEL_NAMES = ["", "red", "orange", "yellow", "green", "blue", "purple", "grey"];

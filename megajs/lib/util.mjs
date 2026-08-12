@@ -90,4 +90,4 @@ function createPromise(originalCb) {
 	return [cb, promise];
 }
 
-export { chunkSizeSafe, createPromise, detectSize, streamToCb };
+export { streamToCb, chunkSizeSafe, detectSize, createPromise };

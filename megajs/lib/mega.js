@@ -1,8 +1,8 @@
-import API from "./api.mjs";
-import { megaDecrypt, megaEncrypt, megaVerify } from "./crypto/index.mjs";
-import File from "./file.mjs";
-import MutableFile from "./mutable-file.mjs";
+import { megaEncrypt, megaDecrypt, megaVerify } from "./crypto/index.mjs";
 import Storage from "./storage.mjs";
+import MutableFile from "./mutable-file.mjs";
+import File from "./file.mjs";
+import API from "./api.mjs";
 
 // just for backyards compatibility: is better requiring
 // File and Storage directly as built sizes will be smaller

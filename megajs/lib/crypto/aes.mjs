@@ -7,7 +7,7 @@ export function prepareKey(password) {
 		147, 196, 103, 227, 125, 176, 199, 164, 209, 190, 63, 129, 1, 82, 203, 86,
 	]);
 
-	for (r = 65536; r--; ) {
+	for (r = 65536; r--;) {
 		for (j = 0; j < password.length; j += 16) {
 			const key = Buffer.alloc(16);
 
@@ -77,7 +77,7 @@ class AES {
 		}
 
 		const cipher = crypto.createCipheriv("aes-128-ecb", this.key, Buffer.alloc(0));
-		for (let i = 16384; i--; ) hash = cipher.update(hash);
+		for (let i = 16384; i--;) hash = cipher.update(hash);
 
 		const result = Buffer.allocUnsafe(8);
 		hash.copy(result, 0, 0, 4);

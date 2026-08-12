@@ -8,7 +8,7 @@ export function prepareKey(password) {
 	const paddedPassword = Buffer.alloc(Math.ceil(password.length / 4) * 4);
 	paddedPassword.set(password, 0);
 
-	for (r = 65536; r--; ) {
+	for (r = 65536; r--;) {
 		for (j = 0; j < password.length; j += 16) {
 			const key = [0, 0, 0, 0];
 
@@ -117,7 +117,7 @@ class AES {
 			}
 		}
 
-		for (let i = 16384; i--; ) h32 = this.aes.encrypt(h32);
+		for (let i = 16384; i--;) h32 = this.aes.encrypt(h32);
 
 		const b = Buffer.allocUnsafe(8);
 		b.writeInt32BE(h32[0], 0);

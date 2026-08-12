@@ -1,16 +1,15 @@
-import { EventEmitter } from "events";
-
-import API from "./api.mjs";
 import {
-	AES,
-	constantTimeCompare,
-	d64,
 	e64,
-	formatKey,
+	d64,
 	prepareKey,
 	prepareKeyV2,
+	formatKey,
+	AES,
+	constantTimeCompare,
 } from "./crypto/index.mjs";
 import { cryptoDecodePrivKey, cryptoRsaDecrypt } from "./crypto/rsa.mjs";
+import API from "./api.mjs";
+import { EventEmitter } from "events";
 import MutableFile from "./mutable-file.mjs";
 import { createPromise } from "./util.mjs";
 
@@ -330,7 +329,7 @@ class Storage extends EventEmitter {
 			account.type = response.utype;
 			account.spaceUsed = response.cstrg;
 			account.spaceTotal = response.mstrg;
-			account.downloadBandwidthTotal = response.mxfer || 1024 ** 5 * 10;
+			account.downloadBandwidthTotal = response.mxfer || Math.pow(1024, 5) * 10;
 			account.downloadBandwidthUsed = response.caxfer || 0;
 			account.sharedBandwidthUsed = response.csxfer || 0;
 			account.sharedBandwidthLimit = response.srvratio;

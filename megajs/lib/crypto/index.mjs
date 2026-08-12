@@ -1,5 +1,4 @@
 import { Transform } from "stream";
-
 import pumpify from "pumpify";
 
 import { chunkSizeSafe } from "../util.mjs";
@@ -12,21 +11,19 @@ export function formatKey(key) {
 }
 
 // URL Safe Base64 encode/decode
-function e64(buffer) {
+export function e64(buffer) {
 	return buffer.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-function d64(s) {
+export function d64(s) {
 	return Buffer.from(s, "base64");
 }
-
-export { d64, e64 };
 
 export function getCipher(key) {
 	return new AES(unmergeKeyMac(key).slice(0, 16));
 }
 
-function megaEncrypt(key, options = {}) {
+export function megaEncrypt(key, options = {}) {
 	const start = options.start || 0;
 	if (start !== 0) {
 		throw Error("Encryption cannot start midstream otherwise MAC verification will fail.");
@@ -63,7 +60,7 @@ function megaEncrypt(key, options = {}) {
 	return stream;
 }
 
-function megaDecrypt(key, options = {}) {
+export function megaDecrypt(key, options = {}) {
 	const start = options.start || 0;
 	if (start !== 0) options.disableVerification = true;
 	if (start % 16 !== 0) throw Error("start argument of megaDecrypt must be a multiple of 16");
@@ -96,7 +93,7 @@ function megaDecrypt(key, options = {}) {
 	return stream;
 }
 
-function megaVerify(key) {
+export function megaVerify(key) {
 	key = formatKey(key);
 	if (!(key instanceof Buffer)) {
 		key = Buffer.from(key);
@@ -126,9 +123,7 @@ function megaVerify(key) {
 	return stream;
 }
 
-export { megaDecrypt, megaEncrypt, megaVerify };
-
-function unmergeKeyMac(key) {
+export function unmergeKeyMac(key) {
 	const newKey = Buffer.alloc(32);
 	key.copy(newKey);
 
@@ -139,7 +134,7 @@ function unmergeKeyMac(key) {
 	return newKey;
 }
 
-function mergeKeyMac(key, mac) {
+export function mergeKeyMac(key, mac) {
 	const newKey = Buffer.alloc(32);
 	key.copy(newKey);
 	mac.copy(newKey, 24);
@@ -151,9 +146,7 @@ function mergeKeyMac(key, mac) {
 	return newKey;
 }
 
-export { mergeKeyMac, unmergeKeyMac };
-
-function constantTimeCompare(bufferA, bufferB) {
+export function constantTimeCompare(bufferA, bufferB) {
 	if (bufferA.length !== bufferB.length) return false;
 
 	const len = bufferA.length;
@@ -165,8 +158,6 @@ function constantTimeCompare(bufferA, bufferB) {
 
 	return result === 0;
 }
-
-export { constantTimeCompare };
 
 export async function generateHashcashToken(challenge) {
 	const [versionStr, easinessStr, , tokenStr] = challenge.split(":");

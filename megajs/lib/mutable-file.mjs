@@ -1,9 +1,8 @@
-import { PassThrough } from "stream";
-
-import API from "./api.mjs";
-import { AES, e64, formatKey, getCipher, megaEncrypt, unmergeKeyMac } from "./crypto/index.mjs";
 import File, { LABEL_NAMES } from "./file.mjs";
-import { createPromise, detectSize, streamToCb } from "./util.mjs";
+import { PassThrough } from "stream";
+import { e64, getCipher, megaEncrypt, formatKey, AES, unmergeKeyMac } from "./crypto/index.mjs";
+import { detectSize, streamToCb, createPromise } from "./util.mjs";
+import API from "./api.mjs";
 
 const KEY_CACHE = {};
 
@@ -837,10 +836,10 @@ function makeCryptoRequest(storage, sources, shares) {
 
 	const cryptoRequest = [shares, sources.map((node) => node.nodeId), []];
 
-	for (let i = shares.length; i--; ) {
+	for (let i = shares.length; i--;) {
 		const aes = new AES(shareKeys[shares[i]]);
 
-		for (let j = sources.length; j--; ) {
+		for (let j = sources.length; j--;) {
 			const fileKey = Buffer.from(sources[j].key);
 
 			if (fileKey && (fileKey.length === 32 || fileKey.length === 16)) {

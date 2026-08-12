@@ -1,9 +1,8 @@
 import { EventEmitter } from "events";
 import { Agent as HttpAgent } from "http";
 import { Agent as HttpsAgent } from "https";
-
-import { generateHashcashToken } from "./crypto/index.mjs";
 import { createPromise } from "./util.mjs";
+import { generateHashcashToken } from "./crypto/index.mjs";
 
 const MAX_RETRIES = 4;
 const ERRORS = {
@@ -151,7 +150,7 @@ class API extends EventEmitter {
 								() => {
 									this.request(json, cb, retryno + 1);
 								},
-								2 ** (retryno + 1) * 1e3,
+								Math.pow(2, retryno + 1) * 1e3,
 							);
 						}
 					}
@@ -191,7 +190,7 @@ class API extends EventEmitter {
 								() => {
 									this.pull(sn, retryno + 1);
 								},
-								2 ** (retryno + 1) * 1e3,
+								Math.pow(2, retryno + 1) * 1e3,
 							);
 						}
 					}
