@@ -13,7 +13,13 @@ const PAGE_SIZE = 100;
 
 export const fetchCirclesInput = z.object({
 	search: z.string().trim().optional(),
+	// Plain id cursor. Used for browse mode (no search) and ilike searches,
+	// where results are ordered by id and a single btree-indexed keyset works.
 	cursor: z.number().optional(),
+	// Only set (alongside `cursor`) when sorting by relevance. Postgres needs
+	// BOTH values to resume correctly: rank alone isn't unique (ties happen),
+	// and id alone no longer matches the sort order once we sort by rank.
+	cursorRank: z.number().optional(),
 	searchType: z.enum(["all", "circle", "release"]).optional().default("all"),
 	includeTracks: z.boolean().optional().default(false),
 });
@@ -24,36 +30,52 @@ export const fetchCirclesInput = z.object({
 export const fetchCircles = createServerFn({ method: "GET" })
 	.validator(fetchCirclesInput)
 	.middleware([authMiddleware, loggingMiddleware])
-	.handler(async ({ data: { search, cursor, searchType, includeTracks } }) => {
+	.handler(async ({ data: { search, cursor, cursorRank, searchType, includeTracks } }) => {
 		const sv = takeIf(search, (x) => x !== undefined && x !== "") ?? undefined;
 		const svs = takeMapped(sv, (x) => `%${x}%`) ?? undefined;
 
-		let clause: Parameters<typeof db.query.circle.findMany>["0"];
+		const clause: Parameters<typeof db.query.circle.findMany>["0"] = {
+			orderBy: { id: "asc" },
+			where: { id: { gt: cursor } },
+			with: {},
+		};
 
 		switch (searchType) {
 			case "circle":
-				clause = {
-					where: { name: { ilike: svs } },
-				};
+				clause.where!.name = { ilike: svs };
 				break;
 			case "release":
-				clause = {
-					where: { releases: { name: { ilike: svs } } },
-					with: { releases: { where: { name: { ilike: svs } } } },
-				};
+				clause.where!.releases = { name: { ilike: svs } };
+				clause.with!.releases = { where: { name: { ilike: svs } } };
 				break;
 			case "all": {
-				if (sv === undefined) clause = {};
-				else {
-					clause = {
-						where: {
-							RAW: (t) =>
-								sql`${t.searchVector} @@ websearch_to_tsquery('simple', ${sv})`,
+				if (sv !== undefined) {
+					clause.where = {
+						RAW: (t) => {
+							const match = sql`${t.searchVector} @@ websearch_to_tsquery('simple', ${sv})`;
+							const rank = sql`ts_rank(${t.searchVector}, websearch_to_tsquery('simple', ${sv}))`;
+
+							// Composite keyset: rows ranked strictly below where the last
+							// page ended, OR tied on rank but with a smaller id (id is
+							// just a deterministic tiebreaker among equal ranks).
+							const afterCursor =
+								cursor !== undefined && cursorRank !== undefined
+									? sql`(${rank}, ${t.id}) < (${cursorRank}, ${cursor})`
+									: sql`true`;
+
+							return sql`${match} AND ${afterCursor}`;
 						},
 					};
-				}
 
-				break;
+					// Only pay for ts_rank when we're actually going to sort/paginate by it.
+					clause.extras = {
+						rank: (t, { sql }) =>
+							sql<number>`ts_rank(${t.searchVector}, websearch_to_tsquery('simple', ${sv}))`,
+					};
+
+					clause.orderBy = (t) =>
+						sql`ts_rank(${t.searchVector}, websearch_to_tsquery('simple', ${sv})) desc, ${t.id} desc`;
+				}
 			}
 		}
 
@@ -67,41 +89,30 @@ export const fetchCircles = createServerFn({ method: "GET" })
 				missingLink: true,
 				megaLinks: true,
 			},
-			where: {
-				...clause.where,
-				id: { gt: cursor },
-			},
+			where: clause.where,
 			with: {
 				releases: {
 					columns: { id: true, name: true, sizeMb: true, megaLink: true },
-					...(includeTracks
-						? {
-								with: {
-									tracks: {
-										columns: { id: true, name: true },
-										orderBy: {
-											name: "asc",
-										},
-									},
-								},
-							}
-						: {}),
+					with: {
+						tracks: !includeTracks
+							? undefined
+							: { columns: { id: true, name: true }, orderBy: { name: "asc" } },
+					},
 					...(clause.with?.releases ?? ({} as unknown as {})),
 				},
 			},
-			orderBy: { id: "asc" },
+			extras: clause.extras,
+			orderBy: clause.orderBy,
 		});
 
 		return {
 			circles: query,
-			total: {
-				circles: query.length,
-				releases: query.reduce((x, { releases }) => x + releases.length, 0),
-			},
 		};
 	});
 
 export type FetchCirclesShape = Awaited<ReturnType<typeof fetchCircles>>;
+
+type CirclesPageParam = { cursor?: number; cursorRank?: number } | undefined;
 
 export const circlesInfiniteQueryOptions = ({
 	search,
@@ -110,10 +121,23 @@ export const circlesInfiniteQueryOptions = ({
 }: z.input<typeof fetchCirclesInput>) =>
 	infiniteQueryOptions({
 		queryKey: ["circles", search, searchType, includeTracks],
-		initialPageParam: undefined as number | undefined,
+		initialPageParam: undefined as CirclesPageParam,
 		queryFn: ({ pageParam }) =>
-			fetchCircles({ data: { search, searchType, includeTracks, cursor: pageParam } }),
-		getNextPageParam: (lastPage) => {
-			return lastPage.circles.length < PAGE_SIZE ? undefined : lastPage.circles.at(-1)?.id;
+			fetchCircles({
+				data: {
+					search,
+					searchType,
+					includeTracks,
+					cursor: pageParam?.cursor,
+					cursorRank: pageParam?.cursorRank,
+				},
+			}),
+		getNextPageParam: (lastPage): CirclesPageParam => {
+			if (lastPage.circles.length < PAGE_SIZE) return undefined;
+			const last = lastPage.circles.at(-1) as
+				| ((typeof lastPage.circles)[number] & { rank?: number })
+				| undefined;
+			if (!last) return undefined;
+			return { cursor: last.id, cursorRank: last.rank };
 		},
 	});
