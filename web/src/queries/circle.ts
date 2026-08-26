@@ -2,7 +2,7 @@ import { takeIf, takeMapped } from "@jabascript/core";
 import { infiniteQueryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { sql } from "drizzle-orm";
-import z from "zod";
+import * as z from "zod/mini";
 
 import { authMiddleware } from "@/integrations/auth";
 import { loggingMiddleware } from "@/integrations/logging";
@@ -12,11 +12,11 @@ import { db } from "@/db";
 const PAGE_SIZE = 100;
 
 export const fetchCirclesInput = z.object({
-	search: z.string().trim().optional(),
-	cursor: z.number().optional(),
-	cursorRank: z.number().optional(),
-	searchType: z.enum(["all", "circle", "release"]).optional().default("all"),
-	includeTracks: z.boolean().optional().default(false),
+	search: z.optional(z.string().check(z.trim())),
+	cursor: z.optional(z.number()),
+	cursorRank: z.optional(z.number()),
+	searchType: z._default(z.optional(z.enum(["all", "circle", "release"])), "all"),
+	includeTracks: z._default(z.optional(z.boolean()), false),
 });
 
 export const fetchCircles = createServerFn({ method: "GET" })

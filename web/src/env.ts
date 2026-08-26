@@ -1,15 +1,18 @@
 import { createEnv } from "@t3-oss/env-core";
-import { z } from "zod";
+import * as z from "zod/mini";
 
 export const env = createEnv({
 	server: {
 		DATABASE_URL: z.string(),
-		BETTER_AUTH_URL: z.url(),
+		BETTER_AUTH_URL: z.string().check(z.url()),
 		BETTER_AUTH_SECRET: z.string(),
 		DISCORD_ID: z.string(),
 		DISCORD_SECRET: z.string(),
 		DISCORD_GUILD_ID: z.string(),
-		DISCORD_ROLE_IDS: z.string().transform((x) => x.split(";")),
+		DISCORD_ROLE_IDS: z.pipe(
+			z.string(),
+			z.transform((x) => x.split(";")),
+		),
 	},
 
 	/**
@@ -19,7 +22,7 @@ export const env = createEnv({
 	clientPrefix: "VITE_",
 
 	client: {
-		VITE_SOURCE_URL: z.url(),
+		VITE_SOURCE_URL: z.string().check(z.url()),
 	},
 
 	/**

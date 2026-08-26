@@ -1,5 +1,5 @@
 import { useAsyncDebouncer } from "@tanstack/react-pacer";
-import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { noop, useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import {
 	LucideCopy,
@@ -47,14 +47,16 @@ export const Route = createFileRoute("/")({
 		includeTracks: search.includeTracks,
 	}),
 	loader: async ({ context, deps }) => {
-		context.queryClient.ensureQueryData(serverMetaQueryOptions);
-		return context.queryClient.ensureInfiniteQueryData(
-			circlesInfiniteQueryOptions({
-				search: deps.search,
-				searchType: deps.searchType,
-				includeTracks: deps.includeTracks,
-			}),
-		);
+		context.queryClient.query(serverMetaQueryOptions).catch(noop);
+		return context.queryClient
+			.infiniteQuery(
+				circlesInfiniteQueryOptions({
+					search: deps.search,
+					searchType: deps.searchType,
+					includeTracks: deps.includeTracks,
+				}),
+			)
+			.catch(noop);
 	},
 	beforeLoad: async () => {
 		const session = await getSession();

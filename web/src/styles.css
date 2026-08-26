@@ -1,10 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+
 @import "@fontsource-variable/ibm-plex-sans";
 @import "@fontsource/ibm-plex-sans-jp";
-@import "@fontsource/ibm-plex-sans-jp/500.css";
-@import "@fontsource/ibm-plex-sans-jp/700.css";
 @import "@fontsource/ibm-plex-mono";
 
 /*@custom-variant dark (&:is(.dark *));*/

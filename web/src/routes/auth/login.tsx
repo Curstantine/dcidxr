@@ -1,7 +1,7 @@
 import { Form } from "@base-ui/react/form";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
-import z from "zod";
+import * as z from "zod/mini";
 
 import { authClient } from "@/auth/client";
 import { getSession } from "@/auth/func";
@@ -12,8 +12,8 @@ import { Input } from "@/components/input";
 
 export const Route = createFileRoute("/auth/login")({
 	validateSearch: z.object({
-		hasAccess: z.boolean().optional(),
-		error: z.string().optional(),
+		hasAccess: z.optional(z.boolean()),
+		error: z.optional(z.string()),
 	}),
 	beforeLoad: async () => {
 		const session = await getSession();
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/auth/login")({
 
 const loginSchema = z.object({
 	email: z.email("Enter a valid email address"),
-	password: z.string().min(1, "Password is required"),
+	password: z.string().check(z.minLength(1, "Password is required")),
 });
 
 type FieldErrors = Partial<Record<keyof z.infer<typeof loginSchema>, string[] | undefined>>;
