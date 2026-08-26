@@ -16,8 +16,6 @@ import type {
 } from "./types.ts";
 import { createPromise, detectSize, streamToCb } from "./util.ts";
 
-const KEY_CACHE: Record<string, AES> = {};
-
 // metadata can be mutated, not the content
 export class MutableFile extends File {
 	storage: Storage;
@@ -48,10 +46,12 @@ export class MutableFile extends File {
 				const shareKey = storage.shareKeys[id];
 				if (shareKey) {
 					opt.k = idKeyPair;
-					aes = KEY_CACHE[id];
-					if (!aes) {
-						aes = KEY_CACHE[id] = new AES(shareKey);
+					let cachedAes = storage.keyCache.get(id);
+					if (!cachedAes) {
+						cachedAes = new AES(shareKey);
+						storage.keyCache.set(id, cachedAes);
 					}
+					aes = cachedAes;
 					break;
 				}
 			}
@@ -396,7 +396,7 @@ export class MutableFile extends File {
 
 		const handleChunk = () => {
 			chunkSize = Math.min(currentChunkSize, size - position);
-			uploadBuffer = Buffer.alloc(chunkSize);
+			uploadBuffer = Buffer.allocUnsafe(chunkSize);
 			activeConnections++;
 
 			if (currentChunkSize < maxChunkSize) {
@@ -442,6 +442,7 @@ export class MutableFile extends File {
 					})
 					.then(
 						(hash) => {
+							activeConnections--;
 							bytesUploaded += chunkBuffer.length;
 							stream.emit("progress", {
 								bytesLoaded: sizeCheck,
@@ -462,6 +463,7 @@ export class MutableFile extends File {
 						(error) => {
 							handleRetries(tries, error, (retryError) => {
 								if (retryError) {
+									activeConnections--;
 									stream.emit("error", retryError);
 								} else {
 									trySendChunk();
@@ -671,7 +673,7 @@ export class MutableFile extends File {
 	}
 
 	setLabel(label: LabelType, cb?: Callback): Promise<void> {
-		let labelNum: number =
+		const labelNum: number =
 			typeof label === "string" ? (LABEL_NAMES as readonly string[]).indexOf(label) : label;
 		if (
 			typeof labelNum !== "number" ||
@@ -898,7 +900,7 @@ export class MutableFile extends File {
 // source: https://github.com/meganz/webclient/blob/918222d5e4521c8777b1c8da528f79e0110c1798/js/crypto.js#L3728
 function makeCryptoRequest(storage: Storage, sources: any, shares?: string[]): any[] {
 	const shareKeys = storage.shareKeys;
-	let sourceList: any[] = Array.isArray(sources) ? sources : selfAndChildren(sources);
+	const sourceList: any[] = Array.isArray(sources) ? sources : selfAndChildren(sources);
 
 	if (!shares) {
 		shares = sourceList

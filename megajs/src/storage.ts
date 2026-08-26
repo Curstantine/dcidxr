@@ -36,6 +36,7 @@ export class Storage extends EventEmitter {
 	status: StorageStatus;
 	mounts: MutableFile[];
 	shareKeys: Record<string, Buffer>;
+	keyCache: Map<string, AES>;
 	root?: MutableFile;
 	trash?: MutableFile;
 	inbox?: MutableFile;
@@ -45,8 +46,9 @@ export class Storage extends EventEmitter {
 	key?: Buffer;
 	aes!: AES;
 	sid?: string;
-	RSAPrivateKey?: number[][];
+	RSAPrivateKey?: bigint[];
 	ready: Promise<this>;
+	private scListenerAttached = false;
 
 	constructor(options?: StorageOptions | Callback<Storage>, originalCb?: Callback<Storage>) {
 		super();
@@ -72,6 +74,9 @@ export class Storage extends EventEmitter {
 		this.status = "closed";
 		this.mounts = [];
 		this.shareKeys = {};
+		this.keyCache = new Map();
+
+		this._setupScListener();
 
 		if (opts.autologin) {
 			this.login(cb as any);
@@ -80,6 +85,55 @@ export class Storage extends EventEmitter {
 				cb(null, this);
 			});
 		}
+	}
+
+	private _setupScListener(): void {
+		if (this.scListenerAttached) return;
+		this.scListenerAttached = true;
+
+		this.api.on("sc", (arr: any[]) => {
+			const deleted: Record<string, boolean> = {};
+			arr.forEach((o) => {
+				if (o.a === "u") {
+					const file = this.files[o.n];
+					if (file) {
+						file.timestamp = o.ts;
+						file.decryptAttributes(o.at);
+						file.emit("update");
+						this.emit("update", file);
+					}
+				} else if (o.a === "d") {
+					deleted[o.n] = true;
+				} else if (o.a === "t") {
+					o.t.f.forEach((f: any) => {
+						const file = this.files[f.h];
+						if (file) {
+							delete deleted[f.h];
+							const oldparent = file.parent;
+							if (oldparent?.nodeId === f.p) return;
+							if (oldparent?.children) {
+								oldparent.children.splice(oldparent.children.indexOf(file), 1);
+							}
+							file.parent = this.files[f.p];
+							file.parent?.children?.push(file);
+							file.emit("move", oldparent);
+							this.emit("move", file, oldparent);
+						} else {
+							this.emit("add", this._importFile(f));
+						}
+					});
+				}
+			});
+
+			Object.keys(deleted).forEach((n) => {
+				const file = this.files[n];
+				if (file?.parent?.children) {
+					file.parent.children.splice(file.parent.children.indexOf(file), 1);
+				}
+				this.emit("delete", file);
+				file?.emit("delete");
+			});
+		});
 	}
 
 	login(originalCb?: Callback<this>): Promise<this> {
@@ -129,11 +183,17 @@ export class Storage extends EventEmitter {
 
 		const handleV2Account = (info: any) => {
 			prepareKeyV2(Buffer.from(this.options.password!), info, (err, result) => {
-				if (err || !result) return cb(err || new Error("Failed to prepare key"));
+				if (err || !result) {
+					return cb(err || new Error("Failed to prepare key"));
+				}
 
 				const aes = new AES(result.subarray(0, 16));
 				const uh = e64(result.subarray(16));
-				const request: Record<string, any> = { a: "us", user: this.email, uh };
+				const request: Record<string, any> = {
+					a: "us",
+					user: this.email,
+					uh,
+				};
 				finishLogin(request, aes);
 			});
 		};
@@ -230,50 +290,6 @@ export class Storage extends EventEmitter {
 				}
 			}
 			cb(null, this.mounts);
-		});
-
-		this.api.on("sc", (arr: any[]) => {
-			const deleted: Record<string, boolean> = {};
-			arr.forEach((o) => {
-				if (o.a === "u") {
-					const file = this.files[o.n];
-					if (file) {
-						file.timestamp = o.ts;
-						file.decryptAttributes(o.at);
-						file.emit("update");
-						this.emit("update", file);
-					}
-				} else if (o.a === "d") {
-					deleted[o.n] = true;
-				} else if (o.a === "t") {
-					o.t.f.forEach((f: any) => {
-						const file = this.files[f.h];
-						if (file) {
-							delete deleted[f.h];
-							const oldparent = file.parent;
-							if (oldparent?.nodeId === f.p) return;
-							if (oldparent?.children) {
-								oldparent.children.splice(oldparent.children.indexOf(file), 1);
-							}
-							file.parent = this.files[f.p];
-							file.parent?.children?.push(file);
-							file.emit("move", oldparent);
-							this.emit("move", file, oldparent);
-						} else {
-							this.emit("add", this._importFile(f));
-						}
-					});
-				}
-			});
-
-			Object.keys(deleted).forEach((n) => {
-				const file = this.files[n];
-				if (file?.parent?.children) {
-					file.parent.children.splice(file.parent.children.indexOf(file), 1);
-				}
-				this.emit("delete", file);
-				file?.emit("delete");
-			});
 		});
 
 		return promise;

@@ -329,25 +329,14 @@ export class File extends EventEmitter {
 						const body = res.body;
 						if (!body) {
 							throw new Error("Missing response body");
-						} else if ("pipe" in body && typeof (body as any).pipe === "function") {
-							(body as any).pipe(decryptStream);
-						} else if (typeof body.getReader === "function") {
-							const reader = body.getReader();
-							const read = ({
-								done,
-								value,
-							}: ReadableStreamReadResult<Uint8Array>): any => {
-								if (done) {
-									decryptStream.end();
-								} else {
-									decryptStream.write(Buffer.from(value));
-									return reader.read().then(read);
-								}
-							};
-							reader.read().then(read);
-						} else {
-							throw new Error("Single connection streaming not supported by fetch");
 						}
+						for await (const chunk of body as any) {
+							const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+							if (!decryptStream.write(buf)) {
+								await new Promise((r) => decryptStream.once("drain", r));
+							}
+						}
+						decryptStream.end();
 					})
 					.catch(handleError);
 

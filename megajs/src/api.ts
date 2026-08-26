@@ -97,12 +97,23 @@ export class API extends EventEmitter {
 	}
 
 	request(json: any, originalCb?: Callback, retryno = 0): Promise<any> {
-		const isLogout = json.a === "sml";
-		if (this.closed && !isLogout) throw new Error("API is closed");
+		const isLogout = json && json.a === "sml";
 		const [cb, promise] = createPromise(originalCb);
 
+		if (this.closed && !isLogout) {
+			process.nextTick(() => cb(new Error("API is closed")));
+			return promise;
+		}
+
+		// Clone or extract payload without mutating caller object
+		const payload: Record<string, any> = { ...json };
+		const querystring = payload._querystring;
+		let hashcashToken = payload._hashcash;
+		delete payload._querystring;
+		delete payload._hashcash;
+
 		// Don't increment counterId when re-requesting with a hashcash
-		if (typeof json._hashcash !== "string") {
+		if (typeof hashcashToken !== "string") {
 			this.counterId++;
 		}
 
@@ -114,35 +125,37 @@ export class API extends EventEmitter {
 			qs.sid = this.sid;
 		}
 
-		if (typeof json._querystring === "object") {
-			Object.assign(qs, json._querystring);
-			delete json._querystring;
+		if (querystring && typeof querystring === "object") {
+			Object.assign(qs, querystring);
 		}
 
 		const headers: Record<string, string> = {
 			"Content-Type": "application/json",
 		};
-		if (typeof json._hashcash === "string") {
-			headers["X-Hashcash"] = json._hashcash;
-			delete json._hashcash;
+		if (typeof hashcashToken === "string") {
+			headers["X-Hashcash"] = hashcashToken;
 		}
 
 		this.fetch(`${this.gateway}cs?${new URLSearchParams(qs)}`, {
 			method: "POST",
 			headers,
-			body: JSON.stringify([json]),
+			body: JSON.stringify([payload]),
 		})
 			.then(async (resp) => {
 				const hashcashChallenge = resp.headers.get("X-Hashcash");
 				if (hashcashChallenge) {
-					json._hashcash = await generateHashcashToken(hashcashChallenge);
-					// Simulate an EAGAIN response
-					return -3;
+					hashcashToken = await generateHashcashToken(hashcashChallenge);
+					// Simulate an EAGAIN response with hashcash attached
+					const retryPayload = { ...json, _hashcash: hashcashToken };
+					return this.request(retryPayload, cb, retryno);
 				}
 				return handleApiResponse(resp);
 			})
 			.then((resp) => {
-				if (this.closed && !isLogout) return;
+				if (resp === undefined) return; // already handled by hashcash recursion
+				if (this.closed && !isLogout) {
+					return cb(new Error("API was closed"));
+				}
 				if (!resp) return cb(new Error("Empty response"));
 
 				// Some error codes are returned as num, some as array with number.
@@ -183,7 +196,11 @@ export class API extends EventEmitter {
 		const ssl = API.handleForceHttps() ? 1 : 0;
 		this.sn = controller;
 		this.fetch(
-			`${this.gateway}sc?${new URLSearchParams({ sn, ssl: ssl.toString(), sid: this.sid || "" })}`,
+			`${this.gateway}sc?${new URLSearchParams({
+				sn,
+				ssl: ssl.toString(),
+				sid: this.sid || "",
+			})}`,
 			{
 				method: "POST",
 				signal: controller.signal,
