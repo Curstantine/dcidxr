@@ -62,7 +62,7 @@
 		"stream-skip": "^1.0.3"
 	},
 	"devDependencies": {
-		"@types/node": "^20.19.43",
+		"@types/node": "24",
 		"@types/node-fetch": "^2.6.13",
 		"ava": "^8.0.1",
 		"buffer": "^6.0.3",
@@ -71,8 +71,8 @@
 		"esbuild-plugin-alias": "^0.2.1",
 		"events": "^3.3.0",
 		"mega-mock": "^0.4.2",
-		"oxfmt": "^0.63.0",
-		"oxlint": "^1.78.0",
+		"oxfmt": "^0.65.0",
+		"oxlint": "^1.80.0",
 		"readable-stream": "^4.7.0",
 		"regenerator-runtime": "^0.14.1",
 		"standard": "^17.1.2",
