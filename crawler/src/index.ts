@@ -2,10 +2,13 @@ import { fetchReleases } from "./fetch.ts";
 import { start } from "./start.ts";
 import { sync } from "./sync.ts";
 import { transform } from "./transform.ts";
+import { formatDuration } from "./utils/index.ts";
 
 import "./utils/prelude.ts";
 
 async function main(): Promise<void> {
+	const stamp = performance.now();
+
 	const args = process.argv.slice(2);
 	const normalizedArgs = args[1] === "--" ? [args[0], ...args.slice(2)] : args;
 	const [command, inputArg, outputArg] = normalizedArgs;
@@ -33,6 +36,9 @@ async function main(): Promise<void> {
 			process.exitCode = 1;
 			return;
 	}
+
+	const elapsed = performance.now() - stamp;
+	console.log("Command completed in", formatDuration(elapsed));
 }
 
 function printUsage(): void {

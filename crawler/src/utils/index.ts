@@ -1,5 +1,22 @@
 import { wait } from "@jabascript/core";
 
+export function formatDuration(ms: number): string {
+	const units = [
+		{ name: "hr", ms: 3_600_000 },
+		{ name: "min", ms: 60_000 },
+		{ name: "s", ms: 1_000 },
+		{ name: "ms", ms: 1 },
+	] as const;
+
+	for (const unit of units) {
+		if (ms >= unit.ms) {
+			const value = ms / unit.ms;
+			return `${Number.isInteger(value) ? value : value.toFixed(1)} ${unit.name}`;
+		}
+	}
+	return `${ms.toFixed(2)} ms`;
+}
+
 export function normalizeNodeName(name: string | null | undefined, fallback = "Unknown"): string {
 	const normalized = typeof name === "string" ? name.trim() : "";
 	return normalized.length > 0 ? normalized : fallback;
