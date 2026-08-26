@@ -38,17 +38,16 @@
 		"provenance": true
 	},
 	"scripts": {
-		"build": "node --experimental-strip-types build.ts && tsc",
+		"build": "node --experimental-strip-types build.ts && tsc -p tsconfig.build.json",
 		"test": "npm run check && node --experimental-strip-types test/helpers/test-runner.ts",
 		"format": "oxfmt",
 		"lint": "oxlint",
-		"check": "oxlint && oxfmt --check"
+		"check": "oxlint && oxfmt --check && tsc --noEmit"
 	},
 	"dependencies": {},
 	"devDependencies": {
 		"@types/node": "^24.13.3",
 		"esbuild": "^0.28.2",
-		"mega-mock": "^0.4.2",
 		"oxfmt": "^0.65.0",
 		"oxlint": "^1.80.0",
 		"typescript": "^6.0.3"

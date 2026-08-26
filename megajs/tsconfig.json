@@ -3,15 +3,12 @@
 		"target": "ES2024",
 		"module": "NodeNext",
 		"moduleResolution": "NodeNext",
-		"rootDir": "src",
-		"outDir": "dist",
 		"strict": true,
 		"esModuleInterop": true,
 		"skipLibCheck": true,
-		"declaration": true,
-		"emitDeclarationOnly": true,
 		"rewriteRelativeImportExtensions": true,
-		"types": ["node"]
+		"types": ["node"],
+		"noEmit": true
 	},
-	"include": ["src/**/*"]
+	"include": ["src/**/*", "test/**/*"]
 }

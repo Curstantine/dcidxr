@@ -6,7 +6,7 @@ import { run } from "node:test";
 import { spec } from "node:test/reporters";
 import { fileURLToPath } from "node:url";
 
-import megamock from "mega-mock";
+import megamock from "./mock/index.ts";
 
 // Set up temporary directories
 const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "megajs-tests-"));
@@ -28,10 +28,13 @@ server.state.loginData.set("jCf2Pc0pLCU", {
 });
 
 // Start the server
-const gateway = await new Promise<string>((resolve) => {
+const gateway = await new Promise<string>((resolve, reject) => {
 	server.listen(0, "127.0.0.1", () => {
-		const port = server.address().port;
-		resolve(`http://127.0.0.1:${port}/`);
+		const addr = server.address();
+		if (!addr || typeof addr === "string") {
+			return reject(new Error("Failed to get server address"));
+		}
+		resolve(`http://127.0.0.1:${addr.port}/`);
 	});
 });
 
@@ -90,7 +93,9 @@ if (!wasFailed) {
 	}
 }
 
-await new Promise((resolve) => server.close(resolve));
+await new Promise<void>((resolve, reject) => {
+	server.close((err) => (err ? reject(err) : resolve()));
+});
 await fs.rm(tempDir, { recursive: true, force: true });
 
 if (wasFailed) {

@@ -145,7 +145,7 @@ describe("Storage", { concurrency: 1 }, () => {
 				(error, file) => {
 					if (error) return reject(error);
 
-					assert.strictEqual(file.name, "test file buffer");
+					assert.strictEqual(file!.name, "test file buffer");
 					resolve();
 				},
 			);
@@ -322,7 +322,7 @@ describe("Storage", { concurrency: 1 }, () => {
 				(error, folder) => {
 					if (error) return reject(error);
 
-					assert.strictEqual(folder.name, "test folder");
+					assert.strictEqual(folder!.name, "test folder");
 					resolve();
 				},
 			);
@@ -361,8 +361,8 @@ describe("Storage", { concurrency: 1 }, () => {
 				(error, folder) => {
 					if (error) return reject(error);
 
-					assert.strictEqual(folder.name, "test folder 2");
-					assert.strictEqual(folder.parent, parent);
+					assert.strictEqual(folder!.name, "test folder 2");
+					assert.strictEqual(folder!.parent, parent);
 					resolve();
 				},
 			);
@@ -384,8 +384,8 @@ describe("Storage", { concurrency: 1 }, () => {
 				(error, file) => {
 					if (error) return reject(error);
 
-					assert.strictEqual(file.name, "file in folder 2");
-					assert.strictEqual(file.parent, folder);
+					assert.strictEqual(file!.name, "file in folder 2");
+					assert.strictEqual(file!.parent, folder);
 					resolve();
 				},
 			);
@@ -403,7 +403,7 @@ describe("Storage", { concurrency: 1 }, () => {
 				(error, file) => {
 					if (error) return reject(error);
 
-					assert.strictEqual(file.name, "empty file");
+					assert.strictEqual(file!.name, "empty file");
 					resolve();
 				},
 			);
