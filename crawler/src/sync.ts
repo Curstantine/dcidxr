@@ -7,25 +7,25 @@ import "./utils/prelude.ts";
 import { bToMB, chunkIter, dedupeByKey, mapWithConcurrency } from "./utils/index.ts";
 import { readJsonFile, resolveInputPath } from "./utils/files.ts";
 import { type FetchGroup, type SyncInputPayload } from "./utils/types.ts";
-import { getRomaji, initRomaji, toRomaji } from "./utils/romaji.ts";
+import { clearRomajiCache, getRomaji, initRomaji } from "./utils/romaji.ts";
 import { buildStatusText, normalizeStatus, normalizeString } from "./utils/strings.ts";
 
 import { relations } from "../../web/src/db/relations.ts";
 import { circle, release, serverMeta, track } from "../../web/src/db/schema.ts";
-
-if (!process.env.DATABASE_URL) {
-	throw new Error("[drizzle]: DATABASE_URL is not set");
-}
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
-const db = drizzle({ client: pool, relations });
 
 const SYNC_CONCURRENCY = 5;
 const CHUNK_SIZE = 1000;
 const CIRCLE_TX_CHUNK_SIZE = 10;
 
 export async function sync(inputArg?: string): Promise<void> {
-	await wakeupDatabase();
+	if (!process.env.DATABASE_URL) {
+		throw new Error("[drizzle]: DATABASE_URL is not set");
+	}
+
+	const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
+	const db = drizzle({ client: pool, relations });
+
+	await wakeupDatabase(db);
 	await initRomaji();
 	const path = resolveInputPath(inputArg, "dist/releases.json");
 	const input = await readJsonFile<SyncInputPayload>(path);
@@ -40,264 +40,273 @@ export async function sync(inputArg?: string): Promise<void> {
 		return;
 	}
 
-	const circleIdByName = new Map<string, number>();
-
 	try {
-		const names = circles.map((x) => x.circle);
-		for (const chunk of chunkIter(names, CHUNK_SIZE)) {
-			console.log("Collecting data for", chunk.length, "circles");
-			const existing = await db
-				.select({ id: circle.id, name: circle.name })
-				.from(circle)
-				.where(inArray(circle.name, chunk));
+		const circleIdByName = new Map<string, number>();
 
-			existing.forEach((x) => circleIdByName.set(x.name, x.id));
+		try {
+			const names = circles.map((x) => x.circle);
+			for (const chunk of chunkIter(names, CHUNK_SIZE)) {
+				console.log("Collecting data for", chunk.length, "circles");
+				const existing = await db
+					.select({ id: circle.id, name: circle.name })
+					.from(circle)
+					.where(inArray(circle.name, chunk));
+
+				existing.forEach((x) => circleIdByName.set(x.name, x.id));
+			}
+		} catch (e) {
+			console.error("Failed to fetch circles: ", e);
+			return;
 		}
-	} catch (e) {
-		console.error("Failed to fetch circles: ", e);
-		return;
-	}
 
-	try {
-		const missing = circles
-			.filter((x) => !circleIdByName.has(x.circle))
-			.map(fetchGroupToCircleInsert);
+		try {
+			const missing = circles
+				.filter((x) => !circleIdByName.has(x.circle))
+				.map(fetchGroupToCircleInsert);
 
-		console.log("Inserting", missing.length, "missing circles...");
+			console.log("Inserting", missing.length, "missing circles...");
 
-		for (const chunk of chunkIter(missing, CHUNK_SIZE)) {
-			const insert = await db
-				.insert(circle)
-				.values(chunk)
-				.returning({ id: circle.id, name: circle.name });
+			for (const chunk of chunkIter(missing, CHUNK_SIZE)) {
+				const insert = await db
+					.insert(circle)
+					.values(chunk)
+					.returning({ id: circle.id, name: circle.name });
 
-			insert.forEach((x) => circleIdByName.set(x.name, x.id));
+				insert.forEach((x) => circleIdByName.set(x.name, x.id));
+			}
+		} catch (e) {
+			console.error("Failed to insert missing circles: ", e);
+			return;
 		}
-	} catch (e) {
-		console.error("Failed to insert missing circles: ", e);
-		return;
-	}
 
-	let dCount = 0,
-		iCount = 0,
-		uCount = 0;
-	let processedCount = 0;
+		let dCount = 0,
+			iCount = 0,
+			uCount = 0;
+		let processedCount = 0;
 
-	const circleChunks = Array.from(chunkIter(circles, CIRCLE_TX_CHUNK_SIZE));
+		const circleChunks = Array.from(chunkIter(circles, CIRCLE_TX_CHUNK_SIZE));
 
-	await mapWithConcurrency(circleChunks, SYNC_CONCURRENCY, 3, async (circleChunk) => {
-		await db.transaction(async (tx) => {
-			for (const group of circleChunk) {
-				const id = circleIdByName.get(group.circle);
-				if (id === undefined) throw new Error(`Couldn't find id for ${group.circle}`);
+		await mapWithConcurrency(circleChunks, SYNC_CONCURRENCY, 3, async (circleChunk) => {
+			await db.transaction(async (tx) => {
+				for (const group of circleChunk) {
+					const id = circleIdByName.get(group.circle);
+					if (id === undefined) throw new Error(`Couldn't find id for ${group.circle}`);
 
-				let existing;
-				try {
-					existing = await tx.select().from(release).where(eq(release.circleId, id));
-				} catch (e) {
-					console.error(
-						`[sync]: Failed to fetch existing releases for circle ${group.circle}:`,
-						e,
-					);
-					throw e;
-				}
-
-				const existingLinks = new Map(existing.map((x) => [x.megaLink, x]));
-				const incoming = new Set(group.releases.map((x) => x.link));
-
-				// 1. Bulk Delete Old Releases
-				const toDelete = existing.filter((x) => !incoming.has(x.megaLink)).map((r) => r.id);
-				if (toDelete.length > 0) {
-					dCount += toDelete.length;
-					for (const chunk of chunkIter(toDelete, CHUNK_SIZE)) {
-						try {
-							await tx.delete(release).where(inArray(release.id, chunk));
-						} catch (e) {
-							console.error(
-								`[sync]: Failed to delete old releases for circle ${group.circle}:`,
-								e,
-							);
-							throw e;
-						}
-					}
-				}
-
-				const releasesToInsert = [];
-				const releasesToUpdate = [];
-				const tracksToInsert = [];
-				const releaseIdsToClearTracks = [];
-
-				// 2. Categorize operations in memory
-				for (const item of group.releases) {
-					const current = existingLinks.get(item.link);
-					const sizeMb = bToMB(item.sizeBytes);
-
-					if (!current) {
-						releasesToInsert.push({ ...item, sizeMb });
-					} else {
-						if (current.name !== item.name || current.sizeMb !== sizeMb) {
-							uCount += 1;
-							releasesToUpdate.push({ id: current.id, name: item.name, sizeMb });
-						}
-
-						releaseIdsToClearTracks.push(current.id);
-
-						if (item.files.length > 0) {
-							iCount += item.files.length;
-							tracksToInsert.push(
-								...item.files.map((f) => ({
-									name: f.name,
-									circleId: id,
-									releaseId: current.id,
-								})),
-							);
-						}
-					}
-				}
-
-				// 3. Execute Updates
-				for (const updateItem of releasesToUpdate) {
+					let existing;
 					try {
-						await tx
-							.update(release)
-							.set({ name: updateItem.name, sizeMb: updateItem.sizeMb })
-							.where(eq(release.id, updateItem.id));
+						existing = await tx.select().from(release).where(eq(release.circleId, id));
 					} catch (e) {
 						console.error(
-							`[sync]: Failed to update release ${updateItem.name} for circle ${group.circle}:`,
+							`[sync]: Failed to fetch existing releases for circle ${group.circle}:`,
 							e,
 						);
 						throw e;
 					}
-				}
 
-				// 4. Clear old tracks in bulk
-				if (releaseIdsToClearTracks.length > 0) {
-					for (const chunk of chunkIter(releaseIdsToClearTracks, CHUNK_SIZE)) {
-						try {
-							await tx.delete(track).where(inArray(track.releaseId, chunk));
-						} catch (e) {
-							console.error(
-								`[sync]: Failed to clear old tracks for circle ${group.circle}:`,
-								e,
-							);
-							throw e;
-						}
-					}
-				}
+					const existingLinks = new Map(existing.map((x) => [x.megaLink, x]));
+					const incoming = new Set(group.releases.map((x) => x.link));
 
-				// 5. Bulk Insert New Releases & Map IDs to Tracks
-				if (releasesToInsert.length > 0) {
-					for (const chunk of chunkIter(releasesToInsert, CHUNK_SIZE)) {
-						const dbPayload = chunk.map((r) => ({
-							circleId: id,
-							name: r.name,
-							megaLink: r.link,
-							sizeMb: r.sizeMb,
-						}));
-
-						let inserted;
-						try {
-							inserted = await tx
-								.insert(release)
-								.values(dbPayload)
-								.returning({ id: release.id, megaLink: release.megaLink });
-						} catch (e) {
-							console.error(
-								`[sync]: Failed to insert new releases chunk for circle ${group.circle}:`,
-								e,
-							);
-							throw e;
-						}
-
-						iCount += inserted.length;
-						const idMap = new Map(inserted.map((i) => [i.megaLink, i.id]));
-
-						for (const r of chunk) {
-							const rId = idMap.get(r.link);
-							if (rId && r.files.length > 0) {
-								iCount += r.files.length;
-								tracksToInsert.push(
-									...r.files.map((f) => ({
-										name: f.name,
-										circleId: id,
-										releaseId: rId,
-									})),
+					// 1. Bulk Delete Old Releases
+					const toDelete = existing.filter((x) => !incoming.has(x.megaLink)).map((r) => r.id);
+					if (toDelete.length > 0) {
+						dCount += toDelete.length;
+						for (const chunk of chunkIter(toDelete, CHUNK_SIZE)) {
+							try {
+								await tx.delete(release).where(inArray(release.id, chunk));
+							} catch (e) {
+								console.error(
+									`[sync]: Failed to delete old releases for circle ${group.circle}:`,
+									e,
 								);
+								throw e;
 							}
 						}
 					}
-				}
 
-				// 6. Bulk Insert All Tracks (For both New and Existing Releases)
-				if (tracksToInsert.length > 0) {
-					for (const chunk of chunkIter(tracksToInsert, 50)) {
+					const releasesToInsert = [];
+					const releasesToUpdate = [];
+					const tracksToInsert = [];
+					const releaseIdsToClearTracks = [];
+
+					// 2. Categorize operations in memory
+					for (const item of group.releases) {
+						const current = existingLinks.get(item.link);
+						const sizeMb = bToMB(item.sizeBytes);
+
+						if (!current) {
+							releasesToInsert.push({ ...item, sizeMb });
+						} else {
+							const changed = current.name !== item.name || current.sizeMb !== sizeMb;
+							if (changed) {
+								uCount += 1;
+								releasesToUpdate.push({ id: current.id, name: item.name, sizeMb });
+
+								releaseIdsToClearTracks.push(current.id);
+								if (item.files.length > 0) {
+									iCount += item.files.length;
+									tracksToInsert.push(
+										...item.files.map((f) => ({
+											name: f.name,
+											circleId: id,
+											releaseId: current.id,
+										})),
+									);
+								}
+							}
+						}
+					}
+
+					// 3. Execute Updates in batches
+					for (const updateChunk of chunkIter(releasesToUpdate, CHUNK_SIZE)) {
 						try {
-							await tx.insert(track).values(chunk);
+							await Promise.all(
+								updateChunk.map((updateItem) =>
+									tx
+										.update(release)
+										.set({ name: updateItem.name, sizeMb: updateItem.sizeMb })
+										.where(eq(release.id, updateItem.id)),
+								),
+							);
 						} catch (e) {
 							console.error(
-								`[sync]: Failed to insert tracks chunk for circle ${group.circle}:`,
+								`[sync]: Failed to update releases for circle ${group.circle}:`,
 								e,
 							);
 							throw e;
 						}
 					}
-				}
 
-				// 7. Rebuild the search vector from the now-current releases/tracks,
-				// including romaji so romaji queries match kana/kanji names.
-				const rNames = group.releases.map((r) => getRomaji(r.name));
-				const tNames = group.releases.flatMap((r) => r.files.map((f) => getRomaji(f.name)));
+					// 4. Clear old tracks in bulk
+					if (releaseIdsToClearTracks.length > 0) {
+						for (const chunk of chunkIter(releaseIdsToClearTracks, CHUNK_SIZE)) {
+							try {
+								await tx.delete(track).where(inArray(track.releaseId, chunk));
+							} catch (e) {
+								console.error(
+									`[sync]: Failed to clear old tracks for circle ${group.circle}:`,
+									e,
+								);
+								throw e;
+							}
+						}
+					}
 
-				const [circleRomaji, releaseRomaji, trackRomaji] = await Promise.all([
-					getRomaji(group.circle),
-					Promise.all(rNames),
-					Promise.all(tNames),
-				]);
+					// 5. Bulk Insert New Releases & Map IDs to Tracks
+					if (releasesToInsert.length > 0) {
+						for (const chunk of chunkIter(releasesToInsert, CHUNK_SIZE)) {
+							const dbPayload = chunk.map((r) => ({
+								circleId: id,
+								name: r.name,
+								megaLink: r.link,
+								sizeMb: r.sizeMb,
+							}));
 
-				await tx
-					.update(circle)
-					.set({
-						searchVector: sql`setweight(to_tsvector('simple', ${group.circle}), 'A')
+							let inserted;
+							try {
+								inserted = await tx
+									.insert(release)
+									.values(dbPayload)
+									.returning({ id: release.id, megaLink: release.megaLink });
+							} catch (e) {
+								console.error(
+									`[sync]: Failed to insert new releases chunk for circle ${group.circle}:`,
+									e,
+								);
+								throw e;
+							}
+
+							iCount += inserted.length;
+							const idMap = new Map(inserted.map((i) => [i.megaLink, i.id]));
+
+							for (const r of chunk) {
+								const rId = idMap.get(r.link);
+								if (rId && r.files.length > 0) {
+									iCount += r.files.length;
+									tracksToInsert.push(
+										...r.files.map((f) => ({
+											name: f.name,
+											circleId: id,
+											releaseId: rId,
+										})),
+									);
+								}
+							}
+						}
+					}
+
+					// 6. Bulk Insert All Tracks (For both New and Existing Releases)
+					if (tracksToInsert.length > 0) {
+						for (const chunk of chunkIter(tracksToInsert, CHUNK_SIZE)) {
+							try {
+								await tx.insert(track).values(chunk);
+							} catch (e) {
+								console.error(
+									`[sync]: Failed to insert tracks chunk for circle ${group.circle}:`,
+									e,
+								);
+								throw e;
+							}
+						}
+					}
+
+					// 7. Rebuild the search vector from the now-current releases/tracks,
+					// including romaji so romaji queries match kana/kanji names.
+					const releaseNames = group.releases.map((r) => r.name);
+					const trackNames = group.releases.flatMap((r) => r.files.map((f) => f.name));
+
+					const [circleRomaji, releaseRomaji, trackRomaji] = await Promise.all([
+						getRomaji(group.circle),
+						Promise.all(releaseNames.map((n) => getRomaji(n))),
+						Promise.all(trackNames.map((n) => getRomaji(n))),
+					]);
+
+					await tx
+						.update(circle)
+						.set({
+							searchVector: sql`setweight(to_tsvector('simple', ${group.circle}), 'A')
                             || setweight(to_tsvector('simple', ${circleRomaji}), 'A')
-                            || setweight(to_tsvector('simple', ${rNames.join(" ")}), 'B')
+                            || setweight(to_tsvector('simple', ${releaseNames.join(" ")}), 'B')
                             || setweight(to_tsvector('simple', ${releaseRomaji.join(" ")}), 'B')
-                            || setweight(to_tsvector('simple', ${tNames.join(" ")}), 'C')
+                            || setweight(to_tsvector('simple', ${trackNames.join(" ")}), 'C')
                             || setweight(to_tsvector('simple', ${trackRomaji.join(" ")}), 'C')`,
-					})
-					.where(eq(circle.id, id));
+						})
+						.where(eq(circle.id, id));
 
-				processedCount += 1;
-				console.log(`[${processedCount}/${circles.length}] Synchronized ${group.circle}`);
-			}
+					processedCount += 1;
+					console.log(`[${processedCount}/${circles.length}] Synchronized ${group.circle}`);
+				}
+			});
 		});
-	});
 
-	const rn = new Date().toISOString();
-	await db
-		.insert(serverMeta)
-		.values({ key: "last_indexed", value: rn })
-		.onConflictDoUpdate({ target: serverMeta.key, set: { value: rn } });
+		const rn = new Date().toISOString();
+		await db
+			.insert(serverMeta)
+			.values({ key: "last_indexed", value: rn })
+			.onConflictDoUpdate({ target: serverMeta.key, set: { value: rn } });
 
-	const circleCount = circles.length;
-	const { errCount, releaseCount } = circles.reduce(
-		(t, r) => {
-			t.releaseCount += r.releases.length;
-			t.errCount += r.errors.length;
-			return t;
-		},
-		{ errCount: 0, releaseCount: 0 },
-	);
+		const circleCount = circles.length;
+		const { errCount, releaseCount } = circles.reduce(
+			(t, r) => {
+				t.releaseCount += r.releases.length;
+				t.errCount += r.errors.length;
+				return t;
+			},
+			{ errCount: 0, releaseCount: 0 },
+		);
 
-	console.log(
-		`Synchronized ${circleCount} circles, ${releaseCount} releases, and found ${errCount} errors.\n`,
-		`  - insertions: ${iCount}\n`,
-		`  - updates: ${uCount}\n`,
-		`  - deletions: ${dCount}`,
-	);
+		console.log(
+			`Synchronized ${circleCount} circles, ${releaseCount} releases, and found ${errCount} errors.\n`,
+			`  - insertions: ${iCount}\n`,
+			`  - updates: ${uCount}\n`,
+			`  - deletions: ${dCount}`,
+		);
+	} finally {
+		clearRomajiCache();
+		await pool.end();
+	}
 }
 
-async function wakeupDatabase(retries = 3) {
+async function wakeupDatabase(db: ReturnType<typeof drizzle>, retries = 3) {
 	for (let i = 0; i < retries; i++) {
 		try {
 			console.log("Checking database connection (waking up if asleep)...");

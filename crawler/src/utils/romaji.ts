@@ -50,3 +50,7 @@ export function getRomaji(text: string): Promise<string> {
 
 	return promise;
 }
+
+export function clearRomajiCache(): void {
+	CACHE.clear();
+}

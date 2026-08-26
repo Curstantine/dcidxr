@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { fetchReleases } from "./fetch.ts";
@@ -30,6 +30,4 @@ export async function start(): Promise<void> {
 	await transform();
 	await fetchReleases();
 	await sync();
-
-	await rm(INPUT_PATH, { force: true });
 }

@@ -26,7 +26,7 @@ type LinkTask = {
 };
 
 type GroupAccumulator = {
-	releaseSets: Release[][];
+	releases: Release[];
 	errors: string[];
 };
 
@@ -124,23 +124,32 @@ function getDownloadId(node: MegaFile): string {
 		: node.downloadId;
 }
 
-function collectLeafFiles(node: MegaNode): ReleaseFile[] {
+function collectLeafFilesInto(node: MegaNode, out: ReleaseFile[]): void {
 	const name = normalizeNodeName(node.name);
 
 	if (!node.directory && isAudioFileName(name)) {
-		const sizeBytes = typeof node.size === "number" ? node.size : 0;
-		return [{ name, sizeBytes }];
+		out.push({ name, sizeBytes: typeof node.size === "number" ? node.size : 0 });
+		return;
 	}
 
-	if (node.children === undefined) return [];
-	return node.children.flatMap((child) => collectLeafFiles(child));
+	if (node.children !== undefined) {
+		for (const child of node.children) {
+			collectLeafFilesInto(child, out);
+		}
+	}
+}
+
+function collectLeafFiles(node: MegaNode): ReleaseFile[] {
+	const files: ReleaseFile[] = [];
+	collectLeafFilesInto(node, files);
+	return files;
 }
 
 function sumFileSizes(files: ReleaseFile[]): number {
 	return files.reduce((total, file) => total + file.sizeBytes, 0);
 }
 
-async function buildRelease(node: MegaFile, rootLink: string): Promise<Release> {
+function buildRelease(node: MegaFile, rootLink: string): Release {
 	const name = normalizeNodeName(node.name);
 	const files = node.directory
 		? collectLeafFiles(node)
@@ -197,14 +206,14 @@ async function fetchReleasesFromLink(link: string): Promise<Release[]> {
 	const name = normalizeNodeName(root.name, "Root");
 
 	if (!root.directory) {
-		return [await buildRelease(root, link)];
+		return [buildRelease(root, link)];
 	}
 
 	if (root.children === undefined || root.children.length === 0) {
 		return [{ name, link, directory: true, sizeBytes: 0, files: [] }];
 	}
 
-	return Promise.all(root.children.map((child) => buildRelease(child, link)));
+	return root.children.map((child) => buildRelease(child, link));
 }
 
 function dedupeReleases(releases: Release[]): Release[] {
@@ -258,13 +267,13 @@ export async function fetchReleases(inputArg?: string, outputArg?: string): Prom
 	);
 
 	const groupAccumulators: GroupAccumulator[] = groups.map(() => ({
-		releaseSets: [],
+		releases: [],
 		errors: [],
 	}));
 
 	for (const result of taskResults) {
 		const accumulator = groupAccumulators[result.groupIndex];
-		accumulator.releaseSets.push(result.releases);
+		accumulator.releases.push(...result.releases);
 		if (result.error) {
 			accumulator.errors.push(result.error);
 		}
@@ -272,7 +281,7 @@ export async function fetchReleases(inputArg?: string, outputArg?: string): Prom
 
 	const outputGroups: FetchGroup[] = groups.map((group, groupIndex) => {
 		const accumulator = groupAccumulators[groupIndex];
-		const releases = dedupeReleases(accumulator.releaseSets.flat()).sort((a, b) =>
+		const releases = dedupeReleases(accumulator.releases).sort((a, b) =>
 			a.name.localeCompare(b.name),
 		);
 
