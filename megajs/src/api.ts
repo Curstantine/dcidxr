@@ -1,17 +1,16 @@
-import { EventEmitter } from "events";
-import { Agent as HttpAgent } from "http";
-import { Agent as HttpsAgent } from "https";
-import { createPromise } from "./util.mjs";
-import { generateHashcashToken } from "./crypto/index.mjs";
+import { EventEmitter } from "node:events";
+import { Agent as HttpAgent } from "node:http";
+import { Agent as HttpsAgent } from "node:https";
+
+import { generateHashcashToken } from "./crypto/index.ts";
+import type { APIOptions, Callback } from "./types.ts";
+import { createPromise } from "./util.ts";
 
 const MAX_RETRIES = 4;
-const ERRORS = {
+const ERRORS: Record<number, string> = {
 	1: "EINTERNAL (-1): An internal error has occurred. Please submit a bug report, detailing the exact circumstances in which this error occurred.",
 	2: "EARGS (-2): You have passed invalid arguments to this command.",
-	3:
-		"EAGAIN (-3): A temporary congestion or server malfunction prevented your request from being processed. No data was altered. Retried " +
-		MAX_RETRIES +
-		" times.",
+	3: `EAGAIN (-3): A temporary congestion or server malfunction prevented your request from being processed. No data was altered. Retried ${MAX_RETRIES} times.`,
 	4: "ERATELIMIT (-4): You have exceeded your command weight per time quota. Please wait a few seconds, then try again (this should never happen in sane real-life applications).",
 	5: "EFAILED (-5): The upload failed. Please restart it from scratch.",
 	6: "ETOOMANY (-6): Too many concurrent IP addresses are accessing this upload target URL.",
@@ -39,70 +38,75 @@ const ERRORS = {
 };
 
 const DEFAULT_GATEWAY = "https://g.api.mega.co.nz/";
-const DEFAULT_HTTP_AGENT = process.env.IS_BROWSER_BUILD ? null : new HttpAgent({ keepAlive: true });
-const DEFAULT_HTTPS_AGENT = process.env.IS_BROWSER_BUILD
-	? null
-	: new HttpsAgent({ keepAlive: true });
+const DEFAULT_HTTP_AGENT = new HttpAgent({ keepAlive: true });
+const DEFAULT_HTTPS_AGENT = new HttpsAgent({ keepAlive: true });
 
-class API extends EventEmitter {
-	constructor(keepalive, opt = {}) {
+export class API extends EventEmitter {
+	keepalive?: boolean;
+	counterId: number;
+	gateway: string;
+	userAgent: string | null;
+	httpAgent: HttpAgent | null;
+	httpsAgent: HttpsAgent | null;
+	fetch: typeof fetch;
+	closed: boolean;
+	sid?: string;
+	sn?: AbortController;
+	static globalApi?: API;
+
+	constructor(keepalive = false, opt: APIOptions = {}) {
 		super();
 		this.keepalive = keepalive;
-		this.counterId = Math.random().toString().substr(2, 10);
+		this.counterId = Math.floor(Math.random() * 1e10);
 		this.gateway = opt.gateway || DEFAULT_GATEWAY;
 
-		// Set up a default user agent and keep-alive agent
-		const packageVersion = process.env.PACKAGE_VERSION;
 		const shouldAvoidUA = API.getShouldAvoidUA();
 		this.userAgent =
 			opt.userAgent === null || shouldAvoidUA
 				? null
-				: `${opt.userAgent || ""} megajs/${packageVersion}`.trim();
+				: `${opt.userAgent || ""} megajs/1.3.9`.trim();
 
-		this.httpAgent = opt.httpAgent || DEFAULT_HTTP_AGENT;
-		this.httpsAgent = opt.httpsAgent || DEFAULT_HTTPS_AGENT;
+		this.httpAgent = opt.httpAgent !== undefined ? opt.httpAgent : DEFAULT_HTTP_AGENT;
+		this.httpsAgent = opt.httpsAgent !== undefined ? opt.httpsAgent : DEFAULT_HTTPS_AGENT;
 
-		// Can be overridden to allow changing how fetching works
-		// Like fetch it should return a Promise<Request>
 		this.fetch = opt.fetch || this.defaultFetch.bind(this);
-
 		this.closed = false;
 	}
 
-	async defaultFetch(url, opts) {
-		if (!opts) opts = {};
+	async defaultFetch(
+		url: string | URL | Request,
+		opts: RequestInit & { agent?: any; headers?: any } = {},
+	): Promise<Response> {
 		if (!opts.agent) {
-			opts.agent = (url) => (url.protocol === "http:" ? this.httpAgent : this.httpsAgent);
+			opts.agent = (parsedUrl: URL) =>
+				parsedUrl.protocol === "http:" ? this.httpAgent : this.httpsAgent;
 		}
 
 		if (this.userAgent) {
 			if (!opts.headers) opts.headers = {};
-			if (!opts.headers["user-agent"]) opts.headers["user-agent"] = this.userAgent;
-		}
-
-		if (!API.fetchModule) {
-			if (typeof globalThis.fetch === "function") {
-				API.fetchModule = globalThis.fetch.bind(globalThis);
-			} else {
-				throw Error("globalThis.fetch not found!");
+			if (typeof opts.headers.set === "function") {
+				if (!opts.headers.has("user-agent")) {
+					opts.headers.set("user-agent", this.userAgent);
+				}
+			} else if (!opts.headers["user-agent"]) {
+				opts.headers["user-agent"] = this.userAgent;
 			}
 		}
 
-		return API.fetchModule(url, opts);
+		return globalThis.fetch(url, opts);
 	}
 
-	request(json, originalCb, retryno = 0) {
+	request(json: any, originalCb?: Callback, retryno = 0): Promise<any> {
 		const isLogout = json.a === "sml";
-		if (this.closed && !isLogout) throw Error("API is closed");
+		if (this.closed && !isLogout) throw new Error("API is closed");
 		const [cb, promise] = createPromise(originalCb);
 
 		// Don't increment counterId when re-requesting with a hashcash
-		// Thanks @angelvega93
 		if (typeof json._hashcash !== "string") {
 			this.counterId++;
 		}
 
-		const qs = {
+		const qs: Record<string, string> = {
 			id: this.counterId.toString(),
 		};
 
@@ -115,7 +119,9 @@ class API extends EventEmitter {
 			delete json._querystring;
 		}
 
-		const headers = { "Content-Type": "application/json" };
+		const headers: Record<string, string> = {
+			"Content-Type": "application/json",
+		};
 		if (typeof json._hashcash === "string") {
 			headers["X-Hashcash"] = json._hashcash;
 			delete json._hashcash;
@@ -137,47 +143,52 @@ class API extends EventEmitter {
 			})
 			.then((resp) => {
 				if (this.closed && !isLogout) return;
-				if (!resp) return cb(Error("Empty response"));
+				if (!resp) return cb(new Error("Empty response"));
 
 				// Some error codes are returned as num, some as array with number.
-				if (resp.length) resp = resp[0];
+				let responseData = resp;
+				if (Array.isArray(responseData) && responseData.length) {
+					responseData = responseData[0];
+				}
 
-				let err;
-				if (typeof resp === "number" && resp < 0) {
-					if (resp === -3) {
+				let err: Error | null = null;
+				if (typeof responseData === "number" && responseData < 0) {
+					if (responseData === -3) {
 						if (retryno < MAX_RETRIES) {
 							return setTimeout(
 								() => {
 									this.request(json, cb, retryno + 1);
 								},
-								Math.pow(2, retryno + 1) * 1e3,
+								2 ** (retryno + 1) * 1e3,
 							);
 						}
 					}
-					err = Error(ERRORS[-resp]);
+					err = new Error(ERRORS[-responseData] || `Unknown error (${responseData})`);
 				} else {
-					if (this.keepalive && resp && resp.sn) {
-						this.pull(resp.sn);
+					if (this.keepalive && responseData && responseData.sn) {
+						this.pull(responseData.sn);
 					}
 				}
-				cb(err, resp);
+				cb(err, responseData);
 			})
 			.catch((err) => {
 				cb(err);
 			});
 
-		// TODO: find a way to simplify this promise->callback->promise chain
 		return promise;
 	}
 
-	pull(sn, retryno = 0) {
+	pull(sn: string, retryno = 0): void {
 		const controller = new AbortController();
 		const ssl = API.handleForceHttps() ? 1 : 0;
 		this.sn = controller;
-		this.fetch(`${this.gateway}sc?${new URLSearchParams({ sn, ssl, sid: this.sid })}`, {
-			method: "POST",
-			signal: controller.signal,
-		})
+		this.fetch(
+			`${this.gateway}sc?${new URLSearchParams({ sn, ssl: ssl.toString(), sid: this.sid || "" })}`,
+			{
+				method: "POST",
+				signal: controller.signal,
+			},
+		)
 			.then(handleApiResponse)
 			.then((resp) => {
 				this.sn = undefined;
@@ -190,16 +201,16 @@ class API extends EventEmitter {
 								() => {
 									this.pull(sn, retryno + 1);
 								},
-								Math.pow(2, retryno + 1) * 1e3,
+								2 ** (retryno + 1) * 1e3,
 							);
 						}
 					}
-					this.emit("error", Error(ERRORS[-resp]));
+					this.emit("error", new Error(ERRORS[-resp] || `Unknown error (${resp})`));
 				}
 
-				if (resp.w) {
+				if (resp?.w) {
 					this.wait(resp.w, sn);
-				} else if (resp.sn) {
+				} else if (resp?.sn) {
 					if (resp.a) {
 						this.emit("sc", resp.a);
 					}
@@ -212,64 +223,56 @@ class API extends EventEmitter {
 			});
 	}
 
-	wait(url, sn) {
+	wait(url: string, sn: string): void {
 		const controller = new AbortController();
 		this.sn = controller;
 		this.fetch(url, {
 			method: "POST",
 			signal: controller.signal,
 		})
-			// Errors were ignored in original mega package
 			.catch(() => {})
 			.then(() => {
-				// Body is ignored here
 				this.sn = undefined;
 				this.pull(sn);
 			});
 	}
 
-	close() {
+	close(): void {
 		if (this.sn) this.sn.abort();
 		this.closed = true;
 	}
 
-	static getGlobalApi() {
+	static getGlobalApi(): API {
 		if (!API.globalApi) {
 			API.globalApi = new API();
 		}
 		return API.globalApi;
 	}
 
-	static handleForceHttps(userOpt) {
+	static handleForceHttps(userOpt?: boolean): boolean {
 		if (userOpt != null) return userOpt;
-		return !!globalThis.isSecureContext;
+		return !globalThis.isSecureContext;
 	}
 
-	static getShouldAvoidUA() {
-		// The only case where we need to avoid setting an user-agent is on browsers
-		// as it would lead to CORS issues as user-agent isn't a whitelisted header
-		// (as it's not included on Access-Control-Allow-Headers from MEGA responses)
-		// but the only browser that causes issues from that is Firefox as it is the
-		// only one that allows JavaScript overriding the user-agent.
-		return !!globalThis.navigator;
+	static getShouldAvoidUA(): boolean {
+		return typeof globalThis.navigator !== "undefined";
 	}
 }
 
-function handleApiResponse(response) {
-	// Issue 130: handle 'Server Too Busy' as -3
+async function handleApiResponse(response: Response): Promise<any> {
 	if (response.statusText === "Server Too Busy") {
 		return -3;
 	}
 
 	if (!response.ok) {
-		throw Error(`Server returned error: ${response.statusText}`);
+		throw new Error(`Server returned error: ${response.statusText}`);
 	}
 
 	return response.json();
 }
 
-function ignoreAbortError(error) {
-	if (error.name !== "AbortError") throw error;
+function ignoreAbortError(error: any): void {
+	if (error?.name !== "AbortError") throw error;
 }
 
 export default API;

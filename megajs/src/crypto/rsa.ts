@@ -9,14 +9,14 @@
  * 2004 by Herbert Hanewinkel, www.haneWIN.de
  */
 
-// The original script assumes `this` to be a object (like `window`)
-// Then `this` was replaced with `globalState`
-const globalState = {};
+interface RSAState {
+	q?: number[];
+	mod?: number[];
+}
+
+const globalState: RSAState = {};
 
 // --- Arbitrary Precision Math ---
-// badd(a,b), bsub(a,b), bsqr(a), bmul(a,b)
-// bdiv(a,b), bmod(a,b), bexpmod(g,e,m), bmodexp(g,e,m)
-
 // bs is the shift, bm is the mask
 // set single precision bits to 28
 const bs = 28;
@@ -27,14 +27,13 @@ const bdm = (1 << bd) - 1;
 
 const log2 = Math.log(2);
 
-function zeros(n) {
-	const r = [];
-
+function zeros(n: number): number[] {
+	const r: number[] = [];
 	while (n-- > 0) r[n] = 0;
 	return r;
 }
 
-function zclip(r) {
+function zclip(r: number[]): number[] {
 	let n = r.length;
 	if (r[n - 1]) return r;
 	while (n > 1 && r[n - 1] === 0) n--;
@@ -42,9 +41,9 @@ function zclip(r) {
 }
 
 // returns bit length of integer x
-function nbits(x) {
+function nbits(x: number): number {
 	let n = 1;
-	let t;
+	let t: number;
 	if ((t = x >>> 16) !== 0) {
 		x = t;
 		n += 16;
@@ -68,13 +67,13 @@ function nbits(x) {
 	return n;
 }
 
-function badd(a, b) {
+function badd(a: number[], b: number[]): number[] {
 	const al = a.length;
 	const bl = b.length;
 
 	if (al < bl) return badd(b, a);
 
-	const r = [];
+	const r: number[] = [];
 	let c = 0;
 	let n = 0;
 
@@ -92,7 +91,7 @@ function badd(a, b) {
 	return r;
 }
 
-function bsub(a, b) {
+function bsub(a: number[], b: number[]): number[] {
 	const al = a.length;
 	const bl = b.length;
 
@@ -102,9 +101,9 @@ function bsub(a, b) {
 		if (bl === 1) return [a[0] - b[0]];
 	}
 
-	const r = [];
+	const r: number[] = [];
 	let c = 0;
-	let n;
+	let n: number;
 
 	for (n = 0; n < bl; n++) {
 		c += a[n] - b[n];
@@ -121,7 +120,7 @@ function bsub(a, b) {
 	return zclip(r);
 }
 
-function ip(w, n, x, y, c) {
+function ip(w: number[], n: number, x: number, y: number, c: number): number {
 	const xl = x & bdm;
 	const xh = x >> bd;
 
@@ -136,13 +135,13 @@ function ip(w, n, x, y, c) {
 }
 
 // Multiple-precision squaring, HAC Algorithm 14.16
-
-function bsqr(x) {
+function bsqr(x: number[]): number[] {
 	const t = x.length;
 	const n = 2 * t;
 	const r = zeros(n);
 	let c = 0;
-	let i, j;
+	let i: number;
+	let j: number;
 
 	for (i = 0; i < t; i++) {
 		c = ip(r, 2 * i, x[i], x[i], 0);
@@ -156,12 +155,13 @@ function bsqr(x) {
 }
 
 // Multiple-precision multiplication, HAC Algorithm 14.12
-
-function bmul(x, y) {
+function bmul(x: number[], y: number[]): number[] {
 	const n = x.length;
 	const t = y.length;
 	const r = zeros(n + t - 1);
-	let c, i, j;
+	let c: number;
+	let i: number;
+	let j: number;
 
 	for (i = 0; i < t; i++) {
 		c = 0;
@@ -174,19 +174,21 @@ function bmul(x, y) {
 	return zclip(r);
 }
 
-function toppart(x, start, len) {
+function toppart(x: number[], start: number, len: number): number {
 	let n = 0;
 	while (start >= 0 && len-- > 0) n = n * bx2 + x[start--];
 	return n;
 }
 
 // Multiple-precision division, HAC Algorithm 14.20
-function bdiv(a, b) {
+function bdiv(a: number[], b: number[]): RSAState {
 	let n = a.length - 1;
 	const t = b.length - 1;
 	let nmt = n - t;
-	let x, qq, xx;
-	let i;
+	let x: number[];
+	let qq: number;
+	let xx: number[];
+	let i: number;
 
 	// trivial cases; a < b
 	if (n < t || (n === t && (a[n] < b[n] || (n > 0 && a[n] === b[n] && a[n - 1] < b[n - 1])))) {
@@ -218,17 +220,21 @@ function bdiv(a, b) {
 	const y = b.concat();
 
 	if (shift) {
-		for (i = t; i > 0; i--) y[i] = ((y[i] << shift) & bm) | (y[i - 1] >> shift2);
+		for (i = t; i > 0; i--) {
+			y[i] = ((y[i] << shift) & bm) | (y[i - 1] >> shift2);
+		}
 		y[0] = (y[0] << shift) & bm;
 		if (x[n] & ((bm << shift2) & bm)) {
 			x[++n] = 0;
 			nmt++;
 		}
-		for (i = n; i > 0; i--) x[i] = ((x[i] << shift) & bm) | (x[i - 1] >> shift2);
+		for (i = n; i > 0; i--) {
+			x[i] = ((x[i] << shift) & bm) | (x[i - 1] >> shift2);
+		}
 		x[0] = (x[0] << shift) & bm;
 	}
 
-	let x2;
+	let x2: number[];
 	const q = zeros(nmt + 1);
 	let y2 = zeros(nmt).concat(y);
 	for (;;) {
@@ -240,7 +246,7 @@ function bdiv(a, b) {
 
 	const yt = y[t];
 	const top = toppart(y, t, 2);
-	let m;
+	let m: number;
 	for (i = n; i > t; i--) {
 		m = i - t - 1;
 		if (i >= x.length) {
@@ -265,7 +271,9 @@ function bdiv(a, b) {
 	}
 	// de-normalize
 	if (shift) {
-		for (i = 0; i < x.length - 1; i++) x[i] = (x[i] >> shift) | ((x[i + 1] << shift2) & bm);
+		for (i = 0; i < x.length - 1; i++) {
+			x[i] = (x[i] >> shift) | ((x[i + 1] << shift2) & bm);
+		}
 		x[x.length - 1] >>= shift;
 	}
 
@@ -275,9 +283,9 @@ function bdiv(a, b) {
 }
 
 // returns the mod where m < 2^bd
-function simplemod(i, m) {
+function simplemod(i: number[], m: number): number {
 	let c = 0;
-	let v;
+	let v: number;
 	for (let n = i.length - 1; n >= 0; n--) {
 		v = i[n];
 		c = ((v >> bd) + (c << bd)) % m;
@@ -286,25 +294,26 @@ function simplemod(i, m) {
 	return c;
 }
 
-function bmod(p, m) {
+function bmod(p: number[], m: number[]): number[] {
 	if (m.length === 1) {
 		if (p.length === 1) return [p[0] % m[0]];
 		if (m[0] < bdm) return [simplemod(p, m[0])];
 	}
 
 	const r = bdiv(p, m);
-	return r.mod;
+	return r.mod!;
 }
 
 // Barrett's modular reduction, HAC Algorithm 14.42
-
-function bmod2(x, m, mu) {
+function bmod2(x: number[], m: number[], mu: number[]): number[] {
 	const xl = x.length - (m.length << 1);
-	if (xl > 0) return bmod2(x.slice(0, xl).concat(bmod2(x.slice(xl), m, mu)), m, mu);
+	if (xl > 0) {
+		return bmod2(x.slice(0, xl).concat(bmod2(x.slice(xl), m, mu)), m, mu);
+	}
 
 	const ml1 = m.length + 1;
 	const ml2 = m.length - 1;
-	let rr;
+	let rr: number[];
 	const q3 = bmul(x.slice(ml2), mu).slice(ml1);
 	const r1 = x.slice(0, ml1);
 	const r2 = bmul(q3, m).slice(0, ml1);
@@ -324,30 +333,28 @@ function bmod2(x, m, mu) {
 }
 
 // Modular exponentiation using Barrett reduction
-
-function bmodexp(g, e, m) {
+function bmodexp(g: number[], e: number[], m: number[]): number[] {
 	let a = g.concat();
-	let l = e.length - 1;
-	let n = m.length * 2;
+	const l = e.length - 1;
+	const n = m.length * 2;
 	let mu = zeros(n + 1);
 	mu[n] = 1;
-	mu = bdiv(mu, m).q;
+	mu = bdiv(mu, m).q!;
 
-	n = nbits(e[l]) - 2;
+	let bitIdx = nbits(e[l]) - 2;
 
-	for (; l >= 0; l--) {
-		for (; n >= 0; n -= 1) {
+	for (let curL = l; curL >= 0; curL--) {
+		for (; bitIdx >= 0; bitIdx -= 1) {
 			a = bmod2(bsqr(a), m, mu);
-			if (e[l] & (1 << n)) a = bmod2(bmul(a, g), m, mu);
+			if (e[curL] & (1 << bitIdx)) a = bmod2(bmul(a, g), m, mu);
 		}
-		n = bs - 1;
+		bitIdx = bs - 1;
 	}
 	return a;
 }
 
 // Compute m**d mod p*q for RSA private key operations.
-
-function RSAdecrypt(m, d, p, q, u) {
+function RSAdecrypt(m: number[], d: number[], p: number[], q: number[], u: number[]): number[] {
 	const xp = bmodexp(bmod(m, p), bmod(d, bsub(p, [1])), p);
 	const xq = bmodexp(bmod(m, q), bmod(d, bsub(q, [1])), q);
 
@@ -365,14 +372,13 @@ function RSAdecrypt(m, d, p, q, u) {
 // -----------------------------------------------------------------
 // conversion functions: num array <-> multi precision integer (mpi)
 // mpi: 2 octets with length in bits + octets in big endian order
-
-function mpi2b(s) {
+function mpi2b(s: string): number[] | 0 {
 	let bn = 1;
 	const r = [0];
 	let rn = 0;
 	let sb = 256;
 	let sn = s.length;
-	let c;
+	let c: number;
 
 	if (sn < 2) return 0;
 
@@ -389,13 +395,13 @@ function mpi2b(s) {
 			bn = 1;
 			r[++rn] = 0;
 		}
-		if (c & sb) r[rn] |= bn;
+		if (c! & sb) r[rn] |= bn;
 		bn <<= 1;
 	}
 	return r;
 }
 
-function b2s(b) {
+function b2s(b: number[]): string {
 	let bn = 1;
 	let bc = 0;
 	const r = [0];
@@ -403,7 +409,7 @@ function b2s(b) {
 	let rn = 0;
 	const bits = b.length * bs;
 	let rr = "";
-	let n;
+	let n: number;
 
 	for (n = 0; n < bits; n++) {
 		if (b[bc] & bn) r[rn] |= rb;
@@ -424,23 +430,23 @@ function b2s(b) {
 
 /**
  * cryptoDecodePrivKey
- * @public
- * @argv privk Buffer Private key
- * @return Private Key
- * @source https://github.com/meganz/webclient/blob/542d98ec61340b1e4fbf0dae0ae457c1bc5d49aa/js/crypto.js#L1448
+ * @param privk Buffer Private key
+ * @returns Decoded private key array or false
  */
-function cryptoDecodePrivKey(privk) {
-	const pubkey = [];
+export function cryptoDecodePrivKey(privk: Buffer): number[][] | false {
+	const pubkey: number[][] = [];
+	let currentPrivk = privk;
 
 	// decompose private key
 	for (let i = 0; i < 4; i++) {
-		const l = ((privk[0] * 256 + privk[1] + 7) >> 3) + 2;
-		pubkey[i] = mpi2b(privk.toString("binary").substr(0, l));
-		if (typeof pubkey[i] === "number") {
-			if (i !== 4 || privk.length >= 16) return false;
+		const l = ((currentPrivk[0] * 256 + currentPrivk[1] + 7) >> 3) + 2;
+		const decoded = mpi2b(currentPrivk.toString("latin1").slice(0, l));
+		if (typeof decoded === "number") {
+			if (i !== 4 || currentPrivk.length >= 16) return false;
 			break;
 		}
-		privk = privk.slice(l);
+		pubkey[i] = decoded;
+		currentPrivk = currentPrivk.subarray(l);
 	}
 
 	return pubkey;
@@ -448,18 +454,17 @@ function cryptoDecodePrivKey(privk) {
 
 /**
  * cryptoRsaDecrypt
- * @public
- * @argv ciphertext Buffer
- * @argv privkey Private Key
- * @return Buffer Decrypted plaintext
- * @source https://github.com/meganz/webclient/blob/4d95863d2cdbfb7652d16acdff8bae4b64056549/js/crypto.js#L1468
+ * @param ciphertext Buffer
+ * @param privkey Private Key
+ * @returns Buffer Decrypted plaintext
  */
-function cryptoRsaDecrypt(ciphertext, privkey) {
-	const integerCiphertext = mpi2b(ciphertext.toString("binary"));
+export function cryptoRsaDecrypt(ciphertext: Buffer, privkey: number[][]): Buffer {
+	const integerCiphertext = mpi2b(ciphertext.toString("latin1"));
+	if (typeof integerCiphertext === "number") {
+		throw new Error("Invalid RSA ciphertext");
+	}
 	const plaintext = b2s(
 		RSAdecrypt(integerCiphertext, privkey[2], privkey[0], privkey[1], privkey[3]),
 	);
-	return Buffer.from(plaintext, "binary");
+	return Buffer.from(plaintext, "latin1");
 }
-
-export { cryptoDecodePrivKey, cryptoRsaDecrypt };

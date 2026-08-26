@@ -1,7 +1,17 @@
 {
 	"compilerOptions": {
-		"strictNullChecks": true,
-		"checkJs": true
+		"target": "ES2024",
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"rootDir": "src",
+		"outDir": "dist",
+		"strict": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"declaration": true,
+		"emitDeclarationOnly": true,
+		"rewriteRelativeImportExtensions": true,
+		"types": ["node"]
 	},
-	"include": ["types/cjs.d.ts", "types/es.d.ts"]
+	"include": ["src/**/*"]
 }

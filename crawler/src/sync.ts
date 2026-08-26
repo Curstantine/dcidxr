@@ -107,7 +107,9 @@ export async function sync(inputArg?: string): Promise<void> {
 					const incoming = new Set(group.releases.map((x) => x.link));
 
 					// 1. Bulk Delete Old Releases
-					const toDelete = existing.filter((x) => !incoming.has(x.megaLink)).map((r) => r.id);
+					const toDelete = existing
+						.filter((x) => !incoming.has(x.megaLink))
+						.map((r) => r.id);
 					if (toDelete.length > 0) {
 						dCount += toDelete.length;
 						for (const chunk of chunkIter(toDelete, CHUNK_SIZE)) {
@@ -273,7 +275,9 @@ export async function sync(inputArg?: string): Promise<void> {
 						.where(eq(circle.id, id));
 
 					processedCount += 1;
-					console.log(`[${processedCount}/${circles.length}] Synchronized ${group.circle}`);
+					console.log(
+						`[${processedCount}/${circles.length}] Synchronized ${group.circle}`,
+					);
 				}
 			});
 		});
