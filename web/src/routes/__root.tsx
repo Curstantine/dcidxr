@@ -1,13 +1,9 @@
-import { TanStackDevtools } from "@tanstack/react-devtools";
 import { createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
 import { Analytics } from "@vercel/analytics/react";
+import React, { Suspense } from "react";
 
 import { NotFound } from "@/components/not-found";
 import { Toaster } from "@/components/sonner";
-
-import TanstackPacerDevtools from "@/integrations/pacer/devtools";
-import TanStackQueryDevtools from "@/integrations/query/devtools";
-import TanStackRouterDevtools from "@/integrations/router/devtools";
 
 import type { QueryClient } from "@tanstack/react-query";
 
@@ -36,6 +32,30 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 	shellComponent: RootDocument,
 });
 
+const TanStackDevtools =
+	process.env.NODE_ENV === "production"
+		? () => null
+		: React.lazy(() =>
+				Promise.all([
+					import("@tanstack/react-devtools"),
+					import("@/integrations/router/devtools"),
+					import("@/integrations/query/devtools"),
+					import("@/integrations/pacer/devtools"),
+				]).then(([devtools, routerDevtools, queryDevtools, pacerDevtools]) => ({
+					default: () => (
+						<devtools.TanStackDevtools
+							eventBusConfig={{ debug: false }}
+							config={{ position: "bottom-right" }}
+							plugins={[
+								routerDevtools.default,
+								queryDevtools.default,
+								pacerDevtools.default,
+							]}
+						/>
+					),
+				})),
+			);
+
 function RootDocument({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="en" suppressHydrationWarning>
@@ -44,11 +64,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</head>
 			<body className="font-sans wrap-anywhere antialiased selection:bg-[rgba(79,184,178,0.24)]">
 				{children}
-				<TanStackDevtools
-					eventBusConfig={{ debug: false }}
-					config={{ position: "bottom-right" }}
-					plugins={[TanStackRouterDevtools, TanStackQueryDevtools, TanstackPacerDevtools]}
-				/>
+				<Suspense>
+					<TanStackDevtools />
+				</Suspense>
 				<Scripts />
 				<Toaster />
 				{import.meta.env.PROD && <Analytics />}

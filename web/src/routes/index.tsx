@@ -8,7 +8,7 @@ import {
 	LucideMusic2,
 	LucideSearch,
 } from "lucide-react";
-import { type ChangeEvent, useEffect, useRef, type SubmitEvent, Suspense, useState } from "react";
+import { type ChangeEvent, useEffect, useRef, type SubmitEvent, Suspense } from "react";
 import { toast } from "sonner";
 
 import { authClient } from "@/auth/client";
@@ -38,8 +38,6 @@ import { serverMetaQueryOptions } from "@/queries/meta";
 import { getServerMetaLabel, SEARCH_TYPE_ITEMS } from "@/utils/grammar";
 
 import type { SearchType } from "@/types/circle";
-
-import { env } from "@/env";
 
 export const Route = createFileRoute("/")({
 	validateSearch: fetchCirclesInput,
@@ -104,7 +102,7 @@ function RouteComponent() {
 
 				<div className="flex-1" />
 				<a
-					href={env.VITE_SOURCE_URL}
+					href={import.meta.env.VITE_SOURCE_URL}
 					target="_blank"
 					rel="noopener noreferrer"
 					aria-label="Source"
@@ -142,13 +140,6 @@ function Form() {
 	});
 
 	const inputRef = useRef<HTMLInputElement>(null);
-	const [typeValue, setTypeValue] = useState<SearchType>(searchType);
-	const [includeTracksValue, setIncludeTracksValue] = useState(includeTracks);
-
-	useEffect(() => {
-		setTypeValue(searchType);
-		setIncludeTracksValue(includeTracks);
-	}, [searchType, includeTracks]);
 
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
@@ -168,8 +159,8 @@ function Form() {
 				to: "/",
 				search: {
 					search,
-					searchType: typeValue,
-					includeTracks: includeTracksValue,
+					searchType,
+					includeTracks,
 				},
 			}),
 		{ wait: 350, key: "HandleSearchChange" },
@@ -194,7 +185,7 @@ function Form() {
 
 	const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
 		e.preventDefault();
-		await handleValueChange(inputRef.current?.value, typeValue, includeTracksValue);
+		await handleValueChange(inputRef.current?.value, searchType, includeTracks);
 	};
 
 	return (
@@ -205,12 +196,11 @@ function Form() {
 			<Select<SearchType>
 				name="searchType"
 				items={SEARCH_TYPE_ITEMS}
-				value={typeValue}
+				value={searchType}
 				onValueChange={(v) => {
 					const value = v ?? "all";
 					const search = inputRef.current?.value;
-					setTypeValue(value);
-					handleValueChange(search, value, includeTracksValue);
+					handleValueChange(search, value, includeTracks);
 				}}
 			>
 				<SelectTrigger className="w-full">
@@ -252,16 +242,15 @@ function Form() {
 			<Toggle
 				variant="outline"
 				title="Include tracks"
-				pressed={includeTracksValue}
+				pressed={includeTracks}
 				className="order-2 sm:order-3"
 				onPressedChange={(p) => {
 					const search = inputRef.current?.value;
-					setIncludeTracksValue(p);
-					handleValueChange(search, typeValue, p);
+					handleValueChange(search, searchType, p);
 				}}
 			>
 				<LucideMusic2 />
-				{includeTracksValue ? "Include tracks" : "Exclude tracks"}
+				{includeTracks ? "Include tracks" : "Exclude tracks"}
 			</Toggle>
 
 			{/* Visually hidden submit button strictly for accessibility/Enter behavior */}

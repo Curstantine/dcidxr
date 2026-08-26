@@ -1,7 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/inter";
+@import "@fontsource-variable/ibm-plex-sans";
+@import "@fontsource/ibm-plex-sans-jp";
+@import "@fontsource/ibm-plex-sans-jp/500.css";
+@import "@fontsource/ibm-plex-sans-jp/700.css";
+@import "@fontsource/ibm-plex-mono";
 
 /*@custom-variant dark (&:is(.dark *));*/
 
@@ -9,8 +13,8 @@
 	--color-discord: #5865f2;
 	--color-discord-hover: #4752c4;
 
-	--font-sans: "Inter Variable", sans-serif;
-	--font-mono: "JetBrains Mono", monospace;
+	--font-sans: "IBM Plex Sans Variable", "IBM Plex Sans JP", sans-serif;
+	--font-mono: "IBM Plex Mono", monospace;
 }
 
 @theme inline {
