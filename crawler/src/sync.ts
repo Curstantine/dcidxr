@@ -7,6 +7,7 @@ import "./utils/prelude.ts";
 import { bToMB, chunkIter, dedupeByKey, mapWithConcurrency } from "./utils/index.ts";
 import { readJsonFile, resolveInputPath } from "./utils/files.ts";
 import { type FetchGroup, type SyncInputPayload } from "./utils/types.ts";
+import { getRomaji, initRomaji, toRomaji } from "./utils/romaji.ts";
 import { buildStatusText, normalizeStatus, normalizeString } from "./utils/strings.ts";
 
 import { relations } from "../../web/src/db/relations.ts";
@@ -25,6 +26,7 @@ const CIRCLE_TX_CHUNK_SIZE = 10;
 
 export async function sync(inputArg?: string): Promise<void> {
 	await wakeupDatabase();
+	await initRomaji();
 	const path = resolveInputPath(inputArg, "dist/releases.json");
 	const input = await readJsonFile<SyncInputPayload>(path);
 
@@ -85,23 +87,23 @@ export async function sync(inputArg?: string): Promise<void> {
 
 	await mapWithConcurrency(circleChunks, SYNC_CONCURRENCY, 3, async (circleChunk) => {
 		await db.transaction(async (tx) => {
-			for (const circle of circleChunk) {
-				const id = circleIdByName.get(circle.circle);
-				if (id === undefined) throw new Error(`Couldn't find id for ${circle.circle}`);
+			for (const group of circleChunk) {
+				const id = circleIdByName.get(group.circle);
+				if (id === undefined) throw new Error(`Couldn't find id for ${group.circle}`);
 
 				let existing;
 				try {
 					existing = await tx.select().from(release).where(eq(release.circleId, id));
 				} catch (e) {
 					console.error(
-						`[sync]: Failed to fetch existing releases for circle ${circle.circle}:`,
+						`[sync]: Failed to fetch existing releases for circle ${group.circle}:`,
 						e,
 					);
 					throw e;
 				}
 
 				const existingLinks = new Map(existing.map((x) => [x.megaLink, x]));
-				const incoming = new Set(circle.releases.map((x) => x.link));
+				const incoming = new Set(group.releases.map((x) => x.link));
 
 				// 1. Bulk Delete Old Releases
 				const toDelete = existing.filter((x) => !incoming.has(x.megaLink)).map((r) => r.id);
@@ -112,7 +114,7 @@ export async function sync(inputArg?: string): Promise<void> {
 							await tx.delete(release).where(inArray(release.id, chunk));
 						} catch (e) {
 							console.error(
-								`[sync]: Failed to delete old releases for circle ${circle.circle}:`,
+								`[sync]: Failed to delete old releases for circle ${group.circle}:`,
 								e,
 							);
 							throw e;
@@ -126,7 +128,7 @@ export async function sync(inputArg?: string): Promise<void> {
 				const releaseIdsToClearTracks = [];
 
 				// 2. Categorize operations in memory
-				for (const item of circle.releases) {
+				for (const item of group.releases) {
 					const current = existingLinks.get(item.link);
 					const sizeMb = bToMB(item.sizeBytes);
 
@@ -162,7 +164,7 @@ export async function sync(inputArg?: string): Promise<void> {
 							.where(eq(release.id, updateItem.id));
 					} catch (e) {
 						console.error(
-							`[sync]: Failed to update release ${updateItem.name} for circle ${circle.circle}:`,
+							`[sync]: Failed to update release ${updateItem.name} for circle ${group.circle}:`,
 							e,
 						);
 						throw e;
@@ -176,7 +178,7 @@ export async function sync(inputArg?: string): Promise<void> {
 							await tx.delete(track).where(inArray(track.releaseId, chunk));
 						} catch (e) {
 							console.error(
-								`[sync]: Failed to clear old tracks for circle ${circle.circle}:`,
+								`[sync]: Failed to clear old tracks for circle ${group.circle}:`,
 								e,
 							);
 							throw e;
@@ -202,7 +204,7 @@ export async function sync(inputArg?: string): Promise<void> {
 								.returning({ id: release.id, megaLink: release.megaLink });
 						} catch (e) {
 							console.error(
-								`[sync]: Failed to insert new releases chunk for circle ${circle.circle}:`,
+								`[sync]: Failed to insert new releases chunk for circle ${group.circle}:`,
 								e,
 							);
 							throw e;
@@ -234,7 +236,7 @@ export async function sync(inputArg?: string): Promise<void> {
 							await tx.insert(track).values(chunk);
 						} catch (e) {
 							console.error(
-								`[sync]: Failed to insert tracks chunk for circle ${circle.circle}:`,
+								`[sync]: Failed to insert tracks chunk for circle ${group.circle}:`,
 								e,
 							);
 							throw e;
@@ -242,8 +244,31 @@ export async function sync(inputArg?: string): Promise<void> {
 					}
 				}
 
+				// 7. Rebuild the search vector from the now-current releases/tracks,
+				// including romaji so romaji queries match kana/kanji names.
+				const rNames = group.releases.map((r) => getRomaji(r.name));
+				const tNames = group.releases.flatMap((r) => r.files.map((f) => getRomaji(f.name)));
+
+				const [circleRomaji, releaseRomaji, trackRomaji] = await Promise.all([
+					getRomaji(group.circle),
+					Promise.all(rNames),
+					Promise.all(tNames),
+				]);
+
+				await tx
+					.update(circle)
+					.set({
+						searchVector: sql`setweight(to_tsvector('simple', ${group.circle}), 'A')
+                            || setweight(to_tsvector('simple', ${circleRomaji}), 'A')
+                            || setweight(to_tsvector('simple', ${rNames.join(" ")}), 'B')
+                            || setweight(to_tsvector('simple', ${releaseRomaji.join(" ")}), 'B')
+                            || setweight(to_tsvector('simple', ${tNames.join(" ")}), 'C')
+                            || setweight(to_tsvector('simple', ${trackRomaji.join(" ")}), 'C')`,
+					})
+					.where(eq(circle.id, id));
+
 				processedCount += 1;
-				console.log(`[${processedCount}/${circles.length}] Synchronized ${circle.circle}`);
+				console.log(`[${processedCount}/${circles.length}] Synchronized ${group.circle}`);
 			}
 		});
 	});
