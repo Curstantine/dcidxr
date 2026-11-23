@@ -1,5 +1,6 @@
 import { Form } from "@base-ui/react/form";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { LucideEye, LucideEyeOff } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod/mini";
 
@@ -7,8 +8,14 @@ import { authClient } from "@/auth/client";
 import { getSession } from "@/auth/func";
 
 import { Button } from "@/components/button";
-import { Field, FieldError, FieldSeparator } from "@/components/field";
+import { Field, FieldError, FieldLabel, FieldSeparator } from "@/components/field";
 import { Input } from "@/components/input";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupButton,
+	InputGroupInput,
+} from "@/components/input-group";
 
 export const Route = createFileRoute("/auth/login")({
 	validateSearch: z.object({
@@ -34,6 +41,7 @@ function RouteComponent() {
 	const { hasAccess, error } = Route.useSearch();
 	const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 	const [isLoading, setIsLoading] = useState(false);
+	const [showPassword, setShowPassword] = useState(false);
 
 	const handleDiscordLogin = async () => {
 		await authClient.signIn.social({
@@ -74,7 +82,7 @@ function RouteComponent() {
 	};
 
 	return (
-		<main className="mx-auto flex h-screen flex-col items-center justify-center px-4 pb-12 sm:max-w-sm sm:px-0">
+		<main className="mx-auto flex min-h-dvh flex-col items-center justify-center px-4 pb-12 sm:max-w-sm sm:px-0">
 			{hasAccess !== undefined && !hasAccess && (
 				<div className="border border-current p-2 text-center text-red-500 dark:text-red-400">
 					<p>You do not have access to the certain server and channel!!</p>
@@ -87,25 +95,45 @@ function RouteComponent() {
 				onFormSubmit={handleEmailLogin}
 				className="mb-6 flex w-full flex-col gap-3"
 			>
-				<Field>
+				<Field name="email">
+					<FieldLabel htmlFor="email">Email</FieldLabel>
 					<Input
 						id="email"
 						name="email"
 						type="email"
-						placeholder="Email"
-						autoComplete="email"
+						placeholder="you@example.com"
+						autoComplete="username"
+						spellCheck={false}
+						enterKeyHint="next"
+						required
 					/>
 					<FieldError />
 				</Field>
 
-				<Field>
-					<Input
-						id="password"
-						name="password"
-						type="password"
-						placeholder="Password"
-						autoComplete="current-password"
-					/>
+				<Field name="password">
+					<FieldLabel htmlFor="password">Password</FieldLabel>
+					<InputGroup>
+						<InputGroupInput
+							id="password"
+							name="password"
+							type={showPassword ? "text" : "password"}
+							placeholder="Password"
+							autoComplete="current-password"
+							enterKeyHint="done"
+							required
+						/>
+						<InputGroupAddon align="inline-end">
+							<InputGroupButton
+								type="button"
+								size="icon-xs"
+								aria-pressed={showPassword}
+								aria-label={showPassword ? "Hide password" : "Show password"}
+								onClick={() => setShowPassword((prev) => !prev)}
+							>
+								{showPassword ? <LucideEyeOff /> : <LucideEye />}
+							</InputGroupButton>
+						</InputGroupAddon>
+					</InputGroup>
 					<FieldError />
 				</Field>
 

@@ -72,11 +72,20 @@ function RouteComponent() {
 
 	return (
 		<main className="mx-auto max-w-4xl px-2">
-			<nav className="sticky top-0 flex h-10 items-center justify-between bg-background py-2 text-sm">
+			<a
+				href="#results"
+				className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:ring-2 focus:ring-ring"
+			>
+				Skip to results
+			</a>
+			<nav
+				aria-label="Primary"
+				className="sticky top-0 flex h-10 items-center justify-between bg-background py-2 text-sm"
+			>
 				<div className="flex-1" />
-				<span>
+				<h1 className="text-sm font-normal">
 					Doujin Cafe - <code className="rounded bg-accent p-0.5">#collection</code> index
-				</span>
+				</h1>
 				<div className="flex flex-1 justify-end">
 					<Button
 						type="button"
@@ -191,73 +200,84 @@ function Form() {
 	};
 
 	return (
-		<form
-			onSubmit={handleSubmit}
-			className="sticky top-10 grid h-18 grid-cols-[1fr_8rem] items-center gap-x-2 bg-background sm:h-10 sm:grid-cols-[7rem_1fr_8rem]"
-		>
-			<Select<SearchType>
-				name="searchType"
-				items={SEARCH_TYPE_ITEMS}
-				value={searchType}
-				onValueChange={(v) => {
-					const value = v ?? "all";
-					const search = inputRef.current?.value;
-					handleValueChange(search, value, includeTracks);
-				}}
+		<search className="sticky top-10 bg-background">
+			<form
+				onSubmit={handleSubmit}
+				className="grid h-18 grid-cols-[1fr_8rem] items-center gap-x-2 sm:h-10 sm:grid-cols-[7rem_1fr_8rem]"
 			>
-				<SelectTrigger className="w-full">
-					<SelectValue placeholder="Query" />
-				</SelectTrigger>
-				<SelectContent alignItemWithTrigger={false}>
-					<SelectGroup>
-						{SEARCH_TYPE_ITEMS.map((item) => (
-							<SelectItem key={item.value} value={item.value}>
-								{item.label}
-							</SelectItem>
-						))}
-					</SelectGroup>
-				</SelectContent>
-			</Select>
-
-			<InputGroup className="order-3 col-span-full sm:order-2 sm:col-span-1">
-				<InputGroupInput
-					ref={inputRef}
-					type="search"
-					name="search"
-					placeholder="Search..."
-					defaultValue={search}
-					onChange={(e: ChangeEvent<HTMLInputElement>) => {
-						const search = e.target.value;
-						queueSearchPreload.maybeExecute(search);
+				<Select<SearchType>
+					name="searchType"
+					items={SEARCH_TYPE_ITEMS}
+					value={searchType}
+					onValueChange={(v) => {
+						const value = v ?? "all";
+						const search = inputRef.current?.value;
+						handleValueChange(search, value, includeTracks);
 					}}
-					className="appearance-none"
-				/>
-				<InputGroupAddon align="inline-start">
-					<LucideSearch />
-				</InputGroupAddon>
-				<InputGroupAddon align="inline-end" className="hidden sm:flex">
-					<Kbd>ctrl</Kbd>
-					<Kbd>k</Kbd>
-				</InputGroupAddon>
-			</InputGroup>
+				>
+					<SelectTrigger className="w-full" aria-label="Search type">
+						<SelectValue placeholder="Query" />
+					</SelectTrigger>
+					<SelectContent alignItemWithTrigger={false}>
+						<SelectGroup>
+							{SEARCH_TYPE_ITEMS.map((item) => (
+								<SelectItem key={item.value} value={item.value}>
+									{item.label}
+								</SelectItem>
+							))}
+						</SelectGroup>
+					</SelectContent>
+				</Select>
 
-			<Toggle
-				variant="outline"
-				title="Include tracks"
-				pressed={includeTracks}
-				className="order-2 sm:order-3"
-				onPressedChange={(p) => {
-					const search = inputRef.current?.value;
-					handleValueChange(search, searchType, p);
-				}}
-			>
-				<LucideMusic2 />
-				{includeTracks ? "Include tracks" : "Exclude tracks"}
-			</Toggle>
+				<label htmlFor="search-input" className="sr-only">
+					Search
+				</label>
+				<InputGroup className="order-3 col-span-full sm:order-2 sm:col-span-1">
+					<InputGroupInput
+						id="search-input"
+						ref={inputRef}
+						type="search"
+						name="search"
+						placeholder="Search..."
+						defaultValue={search}
+						autoCorrect="off"
+						autoCapitalize="none"
+						spellCheck={false}
+						enterKeyHint="search"
+						onChange={(e: ChangeEvent<HTMLInputElement>) => {
+							const search = e.target.value;
+							queueSearchPreload.maybeExecute(search);
+						}}
+						className="appearance-none"
+					/>
+					<InputGroupAddon align="inline-start">
+						<LucideSearch aria-hidden="true" />
+					</InputGroupAddon>
+					<InputGroupAddon align="inline-end" className="hidden sm:flex">
+						<Kbd>ctrl</Kbd>
+						<Kbd>k</Kbd>
+					</InputGroupAddon>
+				</InputGroup>
 
-			{/* Visually hidden submit button strictly for accessibility/Enter behavior */}
-			<button type="submit" className="sr-only" aria-hidden="true" tabIndex={-1} />
-		</form>
+				<Toggle
+					variant="outline"
+					title="Include tracks"
+					pressed={includeTracks}
+					className="order-2 sm:order-3"
+					onPressedChange={(p) => {
+						const search = inputRef.current?.value;
+						handleValueChange(search, searchType, p);
+					}}
+				>
+					<LucideMusic2 aria-hidden="true" />
+					{includeTracks ? "Include tracks" : "Exclude tracks"}
+				</Toggle>
+
+				<button type="submit" className="sr-only">
+					Search
+				</button>
+			</form>
+		</search>
 	);
 }
 
@@ -276,9 +296,9 @@ function Results() {
 	const circles = data.pages.flatMap((p) => p.circles);
 
 	return (
-		<section className="mt-2 flex flex-col gap-2">
+		<section id="results" tabIndex={-1} className="mt-2 flex flex-col gap-2">
 			<ul>
-				{circles.map((circle) => (
+				{circles.map((circle, index) => (
 					<CircleLine
 						key={circle.id}
 						id={circle.id}
@@ -288,6 +308,7 @@ function Results() {
 						megaLinks={circle.megaLinks}
 						missingLink={circle.missingLink}
 						releases={circle.releases}
+						deferred={index >= 6}
 					/>
 				))}
 			</ul>
@@ -318,14 +339,21 @@ function CircleLine({
 	releases,
 	megaLinks,
 	missingLink,
-}: FetchCirclesShape["circles"][number]) {
+	deferred,
+}: FetchCirclesShape["circles"][number] & { deferred?: boolean }) {
 	const copyAllLinks = () => {
 		navigator.clipboard.writeText(megaLinks.join("\n"));
 		toast.success("Copied all links to clipboard");
 	};
 
 	return (
-		<li className="flex flex-col border p-2 not-last:border-b-0 first:rounded-t-md last:rounded-b-md">
+		<li
+			className={
+				deferred
+					? "circle-item-deferred flex flex-col border p-2 not-last:border-b-0 first:rounded-t-md last:rounded-b-md"
+					: "flex flex-col border p-2 not-last:border-b-0 first:rounded-t-md last:rounded-b-md"
+			}
+		>
 			<div className="flex flex-wrap items-center gap-1 pb-2">
 				<h2 className="font-medium">{name}</h2>
 				<StatusIndicator status={status} statusText={statusText} />
