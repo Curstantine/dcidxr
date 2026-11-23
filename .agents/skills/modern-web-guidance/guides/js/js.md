@@ -25,8 +25,8 @@ Modern JavaScript and Web platform runtimes provide built-in primitives for deep
 
 For specialized temporal, scheduling, and security workflows, consult the dedicated guides below:
 
-| Workflow / Domain                                                                                                          | Guide                                                                                                                  |
-| :------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------- |
+| Workflow / Domain                                                                                                          | Guide                                                                                                                    |
+| :------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------- |
 | Calculating exact calendar durations (`years`, `months`, `days`) between dates or events                                   | `calculate-event-differentials` (via `pnpm dlx modern-web-guidance@latest retrieve "calculate-event-differentials"`)     |
 | Representing calendar dates (`PlainDate`), wall-clock times (`PlainTime`), or recurring rules without time-zone shift bugs | `capture-location-agnostic-data` (via `pnpm dlx modern-web-guidance@latest retrieve "capture-location-agnostic-data"`)   |
 | Converting instants across IANA time zones (`ZonedDateTime`) with DST disambiguation                                       | `coordinate-global-events` (via `pnpm dlx modern-web-guidance@latest retrieve "coordinate-global-events"`)               |

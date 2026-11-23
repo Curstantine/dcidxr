@@ -40,8 +40,8 @@ These hold across every guide below:
 
 Identify the task and retrieve its guide:
 
-| If you need to…                                                                          | Retrieve                                                                                                               |
-| :--------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------- |
+| If you need to…                                                                          | Retrieve                                                                                                                 |
+| :--------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------- |
 | Define a new semantic tag with behavior and lifecycle                                    | `custom-elements` (via `pnpm dlx modern-web-guidance@latest retrieve "custom-elements"`)                                 |
 | Scope styles and markup to a component, and project consumer content into it             | `shadow-dom` (via `pnpm dlx modern-web-guidance@latest retrieve "shadow-dom"`)                                           |
 | Render a component's shadow tree on the server (SSR) without a flash of unstyled content | `prerendering-custom-elements` (via `pnpm dlx modern-web-guidance@latest retrieve "prerendering-custom-elements"`)       |

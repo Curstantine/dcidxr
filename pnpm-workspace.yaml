@@ -12,16 +12,16 @@ allowBuilds:
 overrides:
     kysely: "^0.28.17"
 permissions:
-  '@tanstack/devtools-vite':
-    skills: false
-  '@tanstack/react-router':
-    skills: false
-  '@tanstack/react-start':
-    skills: false
-  '@tanstack/router-plugin':
-    skills: false
-  drizzle-kit:
-    skills: [drizzle, drizzle-hints]
+    "@tanstack/devtools-vite":
+        skills: false
+    "@tanstack/react-router":
+        skills: false
+    "@tanstack/react-start":
+        skills: false
+    "@tanstack/router-plugin":
+        skills: false
+    drizzle-kit:
+        skills: [drizzle, drizzle-hints]
 skills:
-  dirs:
-    - .agents/skills
+    dirs:
+        - .agents/skills
