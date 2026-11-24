@@ -1,7 +1,8 @@
 import { useAsyncDebouncer } from "@tanstack/react-pacer";
 import { noop, useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useRouter } from "@tanstack/react-router";
 import {
+	LucideCircleHelp,
 	LucideCopy,
 	LucideGitBranch,
 	LucideLogOut,
@@ -82,7 +83,18 @@ function RouteComponent() {
 				aria-label="Primary"
 				className="sticky top-0 z-50 flex h-10 items-center justify-between bg-background py-2 text-sm"
 			>
-				<div className="flex-1" />
+				<div className="flex flex-1 items-center">
+					<Button
+						size="sm"
+						variant="ghost"
+						aria-label="Search guide"
+						title="Search guide"
+						render={<Link to="/help" />}
+						className="-ml-2 text-muted-foreground hover:text-foreground"
+					>
+						<LucideCircleHelp className="size-3.5" aria-hidden="true" />
+					</Button>
+				</div>
 				<h1 className="text-sm font-normal">
 					Doujin Cafe - <code className="rounded bg-accent p-0.5">#collection</code> index
 				</h1>
