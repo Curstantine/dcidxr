@@ -80,7 +80,7 @@ function RouteComponent() {
 			</a>
 			<nav
 				aria-label="Primary"
-				className="sticky top-0 flex h-10 items-center justify-between bg-background py-2 text-sm"
+				className="sticky top-0 z-50 flex h-10 items-center justify-between bg-background py-2 text-sm"
 			>
 				<div className="flex-1" />
 				<h1 className="text-sm font-normal">
@@ -200,7 +200,7 @@ function Form() {
 	};
 
 	return (
-		<search className="sticky top-10 bg-background">
+		<search className="sticky top-10 z-50 bg-background">
 			<form
 				onSubmit={handleSubmit}
 				className="grid h-18 grid-cols-[1fr_8rem] items-center gap-x-2 sm:h-10 sm:grid-cols-[7rem_1fr_8rem]"
